@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "204719491488",
+    "project_id": "tbibi-e33ee",
+    "storage_bucket": "tbibi-e33ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:204719491488:android:b46ca7a41c5e1aca323cc5",
+        "android_client_info": {
+          "package_name": "com.example.newapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAVrriFVFKoGMRQvb3VnN4txgsxw9w4ms"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
