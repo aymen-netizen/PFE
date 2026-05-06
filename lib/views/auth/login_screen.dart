@@ -213,9 +213,10 @@ class _LoginState extends State<LoginScreen> {
 
                 // ✅ LOGIN BUTTON
                 PrimaryButton(
-                  text: _isLoading ? 'Connexion...' : AppString.login,
-                  onPressed: _isLoading ? null : _login,
-                ),
+  text: _isLoading ? 'Loading...' : AppString.login,
+  onPressed: _isLoading ? null : _login, // ✅ THIS IS THE KEY
+),
+
 
                 const SizedBox(height: 24),
 

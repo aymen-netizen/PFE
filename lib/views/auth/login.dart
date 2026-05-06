@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/utils/Validators.dart';
 import '../../../core/constants/app_String.dart';
 import '../../../core/constants/app_Color.dart';
 import '../../../widget/input/customertextfield.dart';
 import '../../../widget/buttons/primary_button.dart';
+
 import 'signup_screen.dart';
 import 'forget_password_screen.dart';
+
+import '../admin/admin_dashboard_screen.dart';
+import '../assistant/assistant_dashboard_screen.dart';
+import '../doctors/doctor_dashboard_screen.dart';
+import '../main_navigation_screen.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -16,11 +24,12 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
 
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -29,32 +38,104 @@ class _LoginState extends State<Login> {
     super.dispose();
   }
 
+  // ✅ ✅ REAL FIREBASE LOGIN
   Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      await Future.delayed(const Duration(seconds: 1));
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connexion réussie! (Mock)')),
-        );
-        // TODO: Navigate to home/dashboard
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      final credential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final user = credential.user;
+
+      if (user == null) {
+        throw Exception("Login failed");
       }
+
+      // ✅ GET ROLE FROM FIRESTORE
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final role = doc.data()?['role'] ?? 'patient';
+
+      Widget screen;
+
+      switch (role) {
+        case 'admin':
+          screen = const AdminDashboardScreen();
+          break;
+
+        case 'assistant':
+          screen = const AssistantDashboardScreen();
+          break;
+
+        case 'doctor':
+          screen = const DoctorDashboardScreen();
+          break;
+
+        default:
+          screen = MainNavigationScreen();
+      }
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => screen),
+      );
+
+    } on FirebaseAuthException catch (e) {
+
+      String message = "Login failed";
+
+      if (e.code == 'user-not-found') {
+        message = "User not found";
+      } else if (e.code == 'wrong-password') {
+        message = "Wrong password";
+      } else if (e.code == 'invalid-email') {
+        message = "Invalid email";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
+
           child: Form(
             key: _formKey,
+
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo/App Icon
+
+                // ✅ ICON
                 Container(
                   width: 120,
                   height: 120,
@@ -68,38 +149,45 @@ class _LoginState extends State<Login> {
                     color: AppColors.primaryColor,
                   ),
                 ),
-                const SizedBox(height: 32),
-                // Title
+
+                const SizedBox(height: 30),
+
                 Text(
                   AppString.appTitle,
                   style: Theme.of(context).textTheme.headlineMedium,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+
+                const SizedBox(height: 10),
+
                 Text(
                   AppString.welcomeMsg,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 48),
-                // Email
+
+                const SizedBox(height: 40),
+
+                // ✅ EMAIL
                 Customertextfield(
                   hintText: AppString.email,
                   controller: _emailController,
                   isPassword: false,
                   validator: validators.validateEmail,
                 ),
+
                 const SizedBox(height: 20),
-                // Password
+
+                // ✅ PASSWORD
                 Customertextfield(
                   hintText: AppString.password,
                   controller: _passwordController,
                   isPassword: true,
                   validator: validators.validatePassword,
                 ),
-                const SizedBox(height: 12),
-                // Forgot Password
+
+                const SizedBox(height: 10),
+
+                // ✅ FORGOT PASSWORD
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -107,66 +195,48 @@ class _LoginState extends State<Login> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ForgetPasswordScreen(),
+                          builder: (_) =>
+                              const ForgetPasswordScreen(),
                         ),
                       );
                     },
-                    child: Text(
-                      AppString.forgotPassword,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    child: const Text(
+                      "Forgot Password?",
+                      style: TextStyle(
                         color: AppColors.primaryColor,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
-                // Login Button
+
+                const SizedBox(height: 30),
+
+                // ✅ LOGIN BUTTON
                 PrimaryButton(
-                  text: _isLoading ? 'Connexion...' : AppString.login,
-                  onPressed: _isLoading ? () {} : () { _login(); },
+                  text: _isLoading ? 'Loading...' : AppString.login,
+                  onPressed: _isLoading ? null : _login,
                 ),
-                const SizedBox(height: 24),
-                // Sign Up link
+
+                const SizedBox(height: 20),
+
+                // ✅ SIGN UP
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      AppString.dontHaveAccount,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                    ),
+                    Text(AppString.dontHaveAccount),
                     TextButton(
                       onPressed: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const SignupScreen(),
+                            builder: (_) =>
+                                const SignupScreen(),
                           ),
                         );
                       },
-                      child: Text(
-                        AppString.signUp,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.primaryColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text("Sign Up"),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                // Google Login (placeholder)
-                OutlinedButton.icon(
-                  onPressed: null, // Implement Google sign in
-                  icon: const Icon(Icons.login_rounded),
-                  label: Text(AppString.loginWithGoogle),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                 ),
               ],
             ),

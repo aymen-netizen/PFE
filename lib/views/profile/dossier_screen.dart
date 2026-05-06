@@ -11,8 +11,23 @@ class DossierScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Dossier Médical"),
-      ),
+  title: const Text("Dossier Médical"),
+  backgroundColor: Colors.green,
+
+  // ✅ FORCE BACK BUTTON COLOR
+  iconTheme: const IconThemeData(
+    color: Colors.white,
+  ),
+
+  // ✅ TEXT COLOR
+  titleTextStyle: const TextStyle(
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+      backgroundColor: const Color(0xFFF3F5F9),
 
       body: user == null
           ? const Center(child: Text("Not logged in"))
@@ -21,84 +36,147 @@ class DossierScreen extends StatelessWidget {
                   .collection('patients')
                   .doc(user.uid)
                   .collection('dossier')
+                  .orderBy('createdAt', descending: true) // ✅ latest first
                   .snapshots(),
               builder: (context, snapshot) {
 
                 if (!snapshot.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final docs = snapshot.data!.docs;
 
                 if (docs.isEmpty) {
-                  return const Center(
-                    child: Text("Aucun dossier disponible"),
-                  );
+                  return const Center(child: Text("Aucun dossier disponible"));
                 }
 
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: docs.length,
-                  itemBuilder: (context, index) {
 
+                  itemBuilder: (context, index) {
                     final data =
                         docs[index].data() as Map<String, dynamic>;
 
+                    final medications =
+                        (data['medications'] ?? []) as List;
+                    final analyses =
+                        (data['analyses'] ?? []) as List;
+                    final recommendations =
+                        (data['recommendations'] ?? []) as List;
+
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 15),
+                      padding: const EdgeInsets.all(20),
+
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius:
-                            BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black
-                                .withOpacity(0.1),
+                            color: Colors.black.withOpacity(0.05),
                             blurRadius: 10,
                           )
                         ],
                       ),
+
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
 
-                          Text(
-                            data['doctorName'] ?? 'Doctor',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                          // ✅ HEADER (IMPORTANT)
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Dr ${data['doctorName'] ?? ''}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              Text(
+                                data['date'] ?? "",
+                                style: const TextStyle(
+                                    color: Colors.grey),
+                              ),
+                            ],
                           ),
 
-                          Text(
-                            data['date'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.grey,
+                          const SizedBox(height: 18),
+
+                          // ✅ MEDICATIONS
+                          if (medications.isNotEmpty) ...[
+                            const Text(
+                              "Medications",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green),
                             ),
-                          ),
+                            const SizedBox(height: 8),
 
-                          const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              children: medications.map<Widget>((m) {
+                                return Chip(
+                                  label: Text(m),
+                                  backgroundColor:
+                                      Colors.blue.shade50,
+                                );
+                              }).toList(),
+                            ),
+                          ],
 
-                          if (data['medications'] != null)
-                            _section(
-                                "Medications",
-                                List<String>.from(
-                                    data['medications'])),
+                          const SizedBox(height: 15),
 
-                          if (data['analyses'] != null)
-                            _section(
-                                "Analyses",
-                                List<String>.from(
-                                    data['analyses'])),
+                          // ✅ ANALYSES
+                          if (analyses.isNotEmpty) ...[
+                            const Text(
+                              "Analyses",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green),
+                            ),
+                            const SizedBox(height: 8),
 
-                          if (data['recommendations'] != null)
-                            _section(
-                                "Recommendations",
-                                List<String>.from(
-                                    data['recommendations'])),
+                            Wrap(
+                              spacing: 8,
+                              children: analyses.map<Widget>((a) {
+                                return Chip(
+                                  label: Text(a),
+                                  backgroundColor:
+                                      Colors.green.shade50,
+                                );
+                              }).toList(),
+                            ),
+                          ],
+
+                          const SizedBox(height: 15),
+
+                          // ✅ RECOMMENDATIONS
+                          if (recommendations.isNotEmpty) ...[
+                            const Text(
+                              "Recommendations",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green),
+                            ),
+                            const SizedBox(height: 8),
+
+                            Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: recommendations.map<Widget>((r) {
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 4),
+                                  child: Text("• $r"),
+                                );
+                              }).toList(),
+                            ),
+                          ],
                         ],
                       ),
                     );
@@ -106,30 +184,6 @@ class DossierScreen extends StatelessWidget {
                 );
               },
             ),
-    );
-  }
-
-  Widget _section(String title, List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 10),
-
-        Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.green,
-          ),
-        ),
-
-        ...items.map(
-          (e) => Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text("• $e"),
-          ),
-        ),
-      ],
     );
   }
 }
