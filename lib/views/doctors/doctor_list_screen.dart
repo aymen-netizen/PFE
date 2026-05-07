@@ -2,7 +2,6 @@
 import '../../models/doctor.dart';
 import '../../services/firebase_doctor_service.dart';
 import '../booking/firebase_booking_screen.dart';
-import '../../utils/doctorhelper.dart';
 
 class DoctorListScreen extends StatefulWidget {
   const DoctorListScreen({super.key});
@@ -23,41 +22,44 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     'Dermatologue',
   ];
 
-  // ✅ IMAGE GENERATION
-  String _getDoctorImage(String specialty, int index) {
-    final Map<String, List<String>> imagesMap = {
-      'cardiologue': [
-        'assets/doctors/cardiologue/cardiologue1.jpg',
-        'assets/doctors/cardiologue/cardiologue2.jpg',
-        'assets/doctors/cardiologue/cardiologue3.jpg',
-        'assets/doctors/cardiologue/cardiologue4.jpg',
-        'assets/doctors/cardiologue/cardiologue5.jpg',
-      ],
-      'dentiste': [
-        'assets/doctors/dentiste/dentiste1.jpg',
-        'assets/doctors/dentiste/dentiste2.jpg',
-        'assets/doctors/dentiste/dentiste3.jpg',
-        'assets/doctors/dentiste/dentiste4.jpg',
-        'assets/doctors/dentiste/dentiste5.jpg',
-      ],
-      'generaliste': [
-        'assets/doctors/medecine_generale/medecine_generale1.jpg',
-        'assets/doctors/medecine_generale/medecine_generale2.jpg',
-        'assets/doctors/medecine_generale/medecine_generale3.jpg',
-        'assets/doctors/medecine_generale/medecine_generale4.jpg',
-        'assets/doctors/medecine_generale/medecine_generale5.jpg',
-      ],
-      'dermatologue': [
-        'assets/doctors/dentiste/dentiste1.jpg',
-        'assets/doctors/dentiste/dentiste2.jpg',
-      ],
-    };
+ String _getDoctorImage(String specialty, String doctorId) {
 
-    final list =
-        imagesMap[specialty.toLowerCase()] ?? imagesMap['dentiste']!;
+  final Map<String, List<String>> imagesMap = {
+    'cardiologue': [
+      'assets/doctors/cardiologue/cardiologue1.jpg',
+      'assets/doctors/cardiologue/cardiologue2.jpg',
+      'assets/doctors/cardiologue/cardiologue3.jpg',
+      'assets/doctors/cardiologue/cardiologue4.jpg',
+      'assets/doctors/cardiologue/cardiologue5.jpg',
+    ],
+    'dentiste': [
+      'assets/doctors/dentiste/dentiste1.jpg',
+      'assets/doctors/dentiste/dentiste2.jpg',
+      'assets/doctors/dentiste/dentiste3.jpg',
+      'assets/doctors/dentiste/dentiste4.jpg',
+      'assets/doctors/dentiste/dentiste5.jpg',
+    ],
+    'generaliste': [
+      'assets/doctors/medecine_generale/medecine_generale1.jpg',
+      'assets/doctors/medecine_generale/medecine_generale2.jpg',
+      'assets/doctors/medecine_generale/medecine_generale3.jpg',
+      'assets/doctors/medecine_generale/medecine_generale4.jpg',
+      'assets/doctors/medecine_generale/medecine_generale5.jpg',
+    ],
+    'dermatologue': [
+      'assets/doctors/dentiste/dentiste1.jpg',
+      'assets/doctors/dentiste/dentiste2.jpg',
+    ],
+  };
 
-    return list[index % list.length];
-  }
+  final list =
+      imagesMap[specialty.toLowerCase()] ?? imagesMap['dentiste']!;
+
+  // ✅ HASH instead of index (stable mapping)
+  final hash = doctorId.hashCode.abs();
+
+  return list[hash % list.length];
+}
 
   @override
   Widget build(BuildContext context) {
@@ -162,10 +164,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                   final specialty =
                       (data['specialty'] ?? '').toLowerCase();
 
-                  final generatedName =
-                      getDoctorNameFromSpecialty(
-                              data['specialty'], index)
-                          .toLowerCase();
+                  final generatedName = data['name'].toLowerCase();
 
                   if (selectedSpecialty != 'All' &&
                       specialty != selectedSpecialty.toLowerCase()) {
@@ -199,10 +198,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                       id: data['id'] ?? '',
 
                       // ✅ UNIQUE NAME
-                      name: getDoctorNameFromSpecialty(
-                        data['specialty'],
-                        index,
-                      ),
+                      name: data['name'],
 
                       specialty: data['specialty'] ?? '',
                       location: data['location'] ?? '',
@@ -243,8 +239,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                               CircleAvatar(
                                 radius: 28,
                                 backgroundImage: AssetImage(
-                                  _getDoctorImage(
-                                      doctor.specialty, index),
+                                  _getDoctorImage(doctor.specialty, doctor.id),
                                 ),
                               ),
 
