@@ -1,167 +1,241 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/firebase_appointment_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../chat/assistant_chat_dashboard.dart';
 
-class AssistantDashboardScreen extends StatelessWidget {
+class AssistantDashboardScreen extends StatefulWidget {
   const AssistantDashboardScreen({super.key});
 
-  Color _color(String status) {
-    switch (status) {
-      case 'pending':
-        return Colors.orange;
-      case 'confirmed':
-        return Colors.blue;
-      case 'completed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+  @override
+  State<AssistantDashboardScreen> createState() =>
+      _AssistantDashboardScreenState();
+}
+
+class _AssistantDashboardScreenState
+    extends State<AssistantDashboardScreen>
+    with SingleTickerProviderStateMixin {
+
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
-  List<Map<String, dynamic>> _filter(
-      List<Map<String, dynamic>> list, int tabIndex) {
-    return list.where((appt) {
-      final status = appt['status'] ?? '';
+  // ✅ BUILD APPOINTMENTS LIST
+  Widget buildAppointments(String status) {
 
-      if (tabIndex == 0) return status == 'pending';
-      if (tabIndex == 1) return status == 'confirmed';
-      return status == 'completed' || status == 'cancelled';
-    }).toList();
-  }
+  final user = FirebaseAuth.instance.currentUser!;
 
-  Widget _list(List<Map<String, dynamic>> list) {
-    if (list.isEmpty) return const Center(child: Text('No RDV'));
+  return StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .snapshots(),
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final appt = list[index];
+    builder: (context, userSnapshot) {
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(appt['doctorName'] ?? ''),
+      if (!userSnapshot.hasData) {
+        return const Center(child: CircularProgressIndicator());
+      }
 
-                Text('👤 ${appt['patientName']}'),
-                Text('📅 ${appt['date']}'),
-                Text('⏰ ${appt['time']}'),
+      final userData =
+          userSnapshot.data!.data() as Map<String, dynamic>;
 
-                const SizedBox(height: 6),
+      final specialty = userData['specialty'];
 
-                Text(
-                  appt['status'],
-                  style: TextStyle(
-                    color: _color(appt['status']),
-                    fontWeight: FontWeight.bold,
+      return StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('appointments')
+            .where('status', isEqualTo: status)
+            .where('specialty', isEqualTo: specialty) // ✅ THIS IS THE FIX
+            .snapshots(),
+
+        builder: (context, snapshot) {
+
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data!.docs;
+
+          if (docs.isEmpty) {
+            return const Center(child: Text("No appointments"));
+          }
+
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+
+              final data =
+                  docs[index].data() as Map<String, dynamic>;
+
+              return Card(
+                margin: const EdgeInsets.all(10),
+
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+
+                      Text(
+                        data['doctorName'] ?? '',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold),
+                      ),
+
+                      Text("👤 ${data['patientName']}"),
+                      Text("📅 ${data['date']}"),
+                      Text("⏰ ${data['time']}"),
+
+                      const SizedBox(height: 10),
+
+                      if (status == 'pending')
+                        Row(
+                          children: [
+
+                            ElevatedButton(
+                              onPressed: () async {
+                                await FirebaseFirestore.instance
+                                    .collection('appointments')
+                                    .doc(docs[index].id)
+                                    .update({'status': 'confirmed'});
+                              },
+                              child: const Text("Confirm"),
+                            ),
+
+                            const SizedBox(width: 8),
+
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red),
+                              onPressed: () async {
+                                await FirebaseFirestore.instance
+                                    .collection('appointments')
+                                    .doc(docs[index].id)
+                                    .update({'status': 'cancelled'});
+                              },
+                              child: const Text("Cancel"),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+}
 
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-
-                    // ✅ CONFIRM BUTTON
-                    if (appt['status'] == 'pending')
-                      ElevatedButton(
-                        onPressed: () async {
-                          await FirebaseFirestore.instance
-                              .collection('appointments')
-                              .doc(appt['id'])
-                              .update({'status': 'confirmed'});
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue),
-                        child: const Text('Confirmer'),
-                      ),
-
-                    const SizedBox(width: 8),
-
-                    // ✅ CANCEL BUTTON
-                    if (appt['status'] != 'completed')
-                      ElevatedButton(
-                        onPressed: () async {
-                          await FirebaseFirestore.instance
-                              .collection('appointments')
-                              .doc(appt['id'])
-                              .update({'status': 'cancelled'});
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red),
-                        child: const Text('Annuler'),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
-    final service = FirebaseAppointmentService();
 
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Assistant Dashboard'),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.green,
 
-          // ✅ ✅ ✅ LOGOUT BUTTON ADDED HERE
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: "Logout",
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
+        // ✅ FIXED TITLE (NO DUPLICATE)
+        title: StreamBuilder<DocumentSnapshot>(
+  stream: FirebaseFirestore.instance
+      .collection('users')
+      .doc(FirebaseAuth.instance.currentUser!.uid)
+      .snapshots(),
+  builder: (context, snapshot) {
 
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  '/login', // ⚠️ make sure this route exists
-                  (route) => false,
-                );
-              },
-            ),
-          ],
+    if (!snapshot.hasData || !snapshot.data!.exists) {
+      return const Text(
+        "Assistant Dashboard",
+        style: TextStyle(color: Colors.white),
+      );
+    }
 
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: "En attente"),
-              Tab(text: "Confirmés"),
-              Tab(text: "Terminés"),
-            ],
+    final data =
+        snapshot.data!.data() as Map<String, dynamic>;
+
+    final specialty = data['specialty'];
+
+    if (specialty == null || specialty.toString().isEmpty) {
+      return const Text(
+        "Assistant Dashboard",
+        style: TextStyle(color: Colors.white),
+      );
+    }
+
+    return Text(
+      "$specialty Assistant Dashboard",
+      style: const TextStyle(color: Colors.white),
+    );
+  },
+),
+
+
+        iconTheme:
+            const IconThemeData(color: Colors.white),
+
+        // ✅ CHAT + LOGOUT BUTTONS
+        actions: [
+
+          IconButton(
+            icon: const Icon(Icons.message,
+                color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const AssistantChatDashboard(),
+                ),
+              );
+            },
           ),
+
+          IconButton(
+            icon: const Icon(Icons.logout,
+                color: Colors.white),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/login',
+                (route) => false,
+              );
+            },
+          ),
+        ],
+
+        // ✅ TABS FIXED (VISIBLE)
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+
+          tabs: const [
+            Tab(text: "Pending"),
+            Tab(text: "Confirmed"),
+          ],
         ),
+      ),
 
-        body: StreamBuilder<List<Map<String, dynamic>>>(
-          stream: service.assistantAppointmentsStream(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      body: TabBarView(
+        controller: _tabController,
+        children: [
 
-            final list = snapshot.data!;
+          // ✅ Pending
+          buildAppointments('pending'),
 
-            return TabBarView(
-              children: [
-                _list(_filter(list, 0)),
-                _list(_filter(list, 1)),
-                _list(_filter(list, 2)),
-              ],
-            );
-          },
-        ),
+          // ✅ Confirmed
+          buildAppointments('confirmed'),
+        ],
       ),
     );
   }

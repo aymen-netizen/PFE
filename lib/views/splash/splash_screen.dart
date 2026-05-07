@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_String.dart';
-import '../../../core/constants/app_Color.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../auth/login_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
 import '../assistant/assistant_dashboard_screen.dart';
 import '../main_navigation_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../doctors/doctor_appointments_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -18,6 +17,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+
   @override
   void initState() {
     super.initState();
@@ -25,114 +25,80 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-  await Future.delayed(const Duration(seconds: 2));
 
-  if (!mounted) return;
+    try {
+      await Future.delayed(const Duration(seconds: 2));
 
-  final user = FirebaseAuth.instance.currentUser;
+      // ✅ ALWAYS CHECK USER FIRST
+      final user = FirebaseAuth.instance.currentUser;
 
-  // NOT LOGGED IN
-  if (user == null) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
-    return;
+      if (!mounted) return;
+
+      // ✅ NOT CONNECTED → LOGIN
+      if (user == null) {
+        _goTo(const LoginScreen());
+        return;
+      }
+
+      // ✅ GET ROLE FROM FIRESTORE
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!mounted) return;
+
+      final role = doc.data()?['role'] ?? 'patient';
+
+      Widget targetScreen;
+
+      // ✅ ROLE NAVIGATION
+      switch (role) {
+        case 'admin':
+          targetScreen = const AdminDashboardScreen();
+          break;
+
+        case 'assistant':
+          targetScreen = const AssistantDashboardScreen();
+          break;
+
+        case 'doctor':
+          targetScreen = DoctorAppointmentsScreen(
+            doctorUid: user.uid,
+          );
+          break;
+
+        default:
+          targetScreen = const MainNavigationScreen();
+      }
+
+      _goTo(targetScreen);
+
+    } catch (e) {
+      // ✅ FAILSAFE → SEND TO LOGIN
+      _goTo(const LoginScreen());
+    }
   }
 
-  // GET ROLE FROM FIREBASE
-  final doc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(user.uid)
-      .get();
+  // ✅ SAFE NAVIGATION METHOD
+  void _goTo(Widget screen) {
+    if (!mounted) return;
 
-  final data = doc.data();
-  final role = data?['role'] ?? 'patient';
-
-  // ADMIN
-  if (role == 'admin') {
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+      MaterialPageRoute(builder: (_) => screen),
+      (route) => false,
     );
-    return;
   }
-
-  // ASSISTANT
-  if (role == 'assistant') {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const AssistantDashboardScreen()),
-    );
-    return;
-  }
-
-  // DOCTOR
-  if (role == 'doctor') {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DoctorAppointmentsScreen(
-          doctorUid: user.uid,
-        ),
-      ),
-    );
-    return;
-  }
-
-  // DEFAULT → PATIENT
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-  );
-}
-
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      backgroundColor: AppColors.primaryColor,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.local_hospital,
-                size: 80,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              AppString.appTitle,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Accès aux soins simplifié',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
-            ),
-          ],
-        ),
+      backgroundColor: Colors.green,
+
+      body: const Center(
+        child: CircularProgressIndicator(color: Colors.white),
       ),
     );
   }

@@ -6,7 +6,7 @@ import '../../../core/constants/app_String.dart';
 import '../../../core/constants/app_Color.dart';
 import '../../../widget/input/customertextfield.dart';
 import '../../../widget/buttons/primary_button.dart';
-import 'login.dart';
+import 'login_screen.dart';
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
@@ -144,7 +144,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const Login(),
+                      builder: (_) => const LoginScreen(),
                     ),
                   );
                 },
