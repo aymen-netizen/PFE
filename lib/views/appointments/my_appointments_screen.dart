@@ -27,11 +27,16 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
   }
 
   Stream<QuerySnapshot> _getAppointments() {
-    return FirebaseFirestore.instance
-        .collection('appointments')
-        .where('patientId', isEqualTo: user?.uid)
-        .snapshots();
+  if (user == null) {
+    return const Stream.empty();
   }
+
+  return FirebaseFirestore.instance
+      .collection('appointments')
+      .where('patientId', isEqualTo: user!.uid)
+      .snapshots();
+}
+
 
   // ✅ CORRECT FILTERING
   List<QueryDocumentSnapshot> _filter(

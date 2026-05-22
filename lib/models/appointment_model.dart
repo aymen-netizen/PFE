@@ -1,17 +1,13 @@
 import 'package:equatable/equatable.dart';
-import 'user_model.dart';
-import 'doctor_model.dart';
 
 class AppointmentModel extends Equatable {
-  final int id;
+  final String id; // ✅ Firestore doc id
   final String date;
   final String time;
   final String status;
-  final int patientId;
-  final int doctorId;
 
-  final UserModel? patient;
-  final DoctorModel? doctor;
+  final String patientId; // ✅ Firebase UID
+  final String doctorId;  // ✅ Firebase UID
 
   // Patient pre-consultation
   final String? reason;
@@ -22,7 +18,7 @@ class AppointmentModel extends Equatable {
   final String? diagnosis;
   final String? doctorNotes;
 
-  // ✅ New checklist-based fields
+  // ✅ Checklists
   final List<dynamic>? medicationsJson;
   final List<dynamic>? analysesJson;
   final List<dynamic>? imagingJson;
@@ -36,8 +32,6 @@ class AppointmentModel extends Equatable {
     required this.status,
     required this.patientId,
     required this.doctorId,
-    this.patient,
-    this.doctor,
     this.reason,
     this.symptoms,
     this.notes,
@@ -50,44 +44,47 @@ class AppointmentModel extends Equatable {
     this.recommendationsJson,
   });
 
-  factory AppointmentModel.fromJson(Map<String, dynamic> json) {
+  // ✅ FROM FIRESTORE
+  factory AppointmentModel.fromMap(String id, Map<String, dynamic> map) {
     return AppointmentModel(
-      id: json['id'] ?? 0,
-      date: json['date'] ?? '',
-      time: json['time'] ?? '',
-      status: json['status'] ?? 'pending',
-      patientId: json['patientId'] ?? 0,
-      doctorId: json['doctorId'] ?? 0,
-
-      // Relations (Sequelize aliases)
-      patient: json['User'] != null
-          ? UserModel.fromJson(json['User'])
-          : null,
-      doctor: json['Doctor'] != null
-          ? DoctorModel.fromJson(json['Doctor'])
-          : null,
-
-      // Patient form
-      reason: json['reason'],
-      symptoms: json['symptoms'] is List ? json['symptoms'] : null,
-      notes: json['notes'],
-
-      // Doctor data
-      diagnosis: json['diagnosis'],
-      doctorNotes: json['doctorNotes'],
-
-      // ✅ Checklist JSON
-      medicationsJson:
-          json['medicationsJson'] is List ? json['medicationsJson'] : null,
-      analysesJson:
-          json['analysesJson'] is List ? json['analysesJson'] : null,
-      imagingJson:
-          json['imagingJson'] is List ? json['imagingJson'] : null,
-      vaccinesJson:
-          json['vaccinesJson'] is List ? json['vaccinesJson'] : null,
-      recommendationsJson:
-          json['recommendationsJson'] is List ? json['recommendationsJson'] : null,
+      id: id,
+      date: map['date'] ?? '',
+      time: map['time'] ?? '',
+      status: map['status'] ?? 'pending',
+      patientId: map['patientId'] ?? '',
+      doctorId: map['doctorId'] ?? '',
+      reason: map['reason'],
+      symptoms: map['symptoms'] is List ? map['symptoms'] : null,
+      notes: map['notes'],
+      diagnosis: map['diagnosis'],
+      doctorNotes: map['doctorNotes'],
+      medicationsJson: map['medicationsJson'],
+      analysesJson: map['analysesJson'],
+      imagingJson: map['imagingJson'],
+      vaccinesJson: map['vaccinesJson'],
+      recommendationsJson: map['recommendationsJson'],
     );
+  }
+
+  // ✅ TO FIRESTORE
+  Map<String, dynamic> toMap() {
+    return {
+      'date': date,
+      'time': time,
+      'status': status,
+      'patientId': patientId,
+      'doctorId': doctorId,
+      'reason': reason,
+      'symptoms': symptoms,
+      'notes': notes,
+      'diagnosis': diagnosis,
+      'doctorNotes': doctorNotes,
+      'medicationsJson': medicationsJson,
+      'analysesJson': analysesJson,
+      'imagingJson': imagingJson,
+      'vaccinesJson': vaccinesJson,
+      'recommendationsJson': recommendationsJson,
+    };
   }
 
   @override
@@ -98,8 +95,6 @@ class AppointmentModel extends Equatable {
         status,
         patientId,
         doctorId,
-        patient,
-        doctor,
         reason,
         symptoms,
         notes,

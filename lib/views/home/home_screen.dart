@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../models/doctor.dart';
-import '../../../models/doctor_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../doctors/doctor_list_screen.dart';
 import '../doctors/doctor_detail_screen.dart';
 import '../profile/dossier_screen.dart';
 import '../profile/analyses_screen.dart';
 import '../appointments/my_appointments_screen.dart';
+import '../../models/doctor.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,91 +19,16 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class HomeContent extends StatefulWidget {
+class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
 
   @override
-  State<HomeContent> createState() => _HomeContentState();
-}
-
-class _HomeContentState extends State<HomeContent> {
-
-  List<DoctorModel> _allDoctors = [];
-
-  @override
-  void initState() {
-    super.initState();
-
-    _allDoctors = [
-      DoctorModel(
-        id: 1,
-        name: "Dr. Ahmed",
-        specialty: "Cardiology",
-        photoUrl: "assets/doctors/cardiologue/cardiologue1.jpg",
-        rating: 4.8,
-        reviewsCount: 120,
-        location: "Tunis",
-        phone: "12345678",
-      ),
-      DoctorModel(
-        id: 2,
-        name: "Dr. Sarah",
-        specialty: "Dentiste",
-        photoUrl: "assets/doctors/dentiste/dentiste1.jpg",
-        rating: 4.7,
-        reviewsCount: 90,
-        location: "Sfax",
-        phone: "12345678",
-      ),
-      DoctorModel(
-        id: 3,
-        name: "Dr. Mehdi",
-        specialty: "Pédiatre",
-        photoUrl: "assets/doctors/pediatre/pediatre1.jpg",
-        rating: 4.9,
-        reviewsCount: 140,
-        location: "Sousse",
-        phone: "12345678",
-      ),
-      DoctorModel(
-        id: 4,
-        name: "Dr. Amal",
-        specialty: "Médecine Générale",
-        photoUrl: "assets/doctors/medecine_generale/medecine_generale1.jpg",
-        rating: 4.6,
-        reviewsCount: 80,
-        location: "Djerba",
-        phone: "12345678",
-      ),
-    ];
-  }
-
-  void _navigateToDoctor(DoctorModel doctor) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => DoctorDetailScreen(
-          doctor: Doctor(
-            id: doctor.id.toString(),
-            name: doctor.name,
-            specialty: doctor.specialty,
-            photoUrl: doctor.photoUrl,
-            rating: doctor.rating,
-            reviewsCount: doctor.reviewsCount,
-            location: doctor.location,
-            phone: doctor.phone,
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
+
     return Stack(
       children: [
 
-        // ✅ HEADER BACKGROUND
+        // ✅ HEADER
         Container(
           height: 240,
           decoration: const BoxDecoration(
@@ -163,7 +89,7 @@ class _HomeContentState extends State<HomeContent> {
 
                 const SizedBox(height: 30),
 
-                // ✅ WHITE CONTENT CARD
+                // ✅ WHITE CARD
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(20),
@@ -175,7 +101,6 @@ class _HomeContentState extends State<HomeContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
 
-                      // ✅ ✅ ACTIONS RAPIDES (FIXED)
                       const Text(
                         "Actions rapides",
                         style: TextStyle(fontWeight: FontWeight.bold),
@@ -233,7 +158,7 @@ class _HomeContentState extends State<HomeContent> {
                             MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            "Médecins populaires",
+                            "Médecins disponibles",
                             style: TextStyle(
                                 fontWeight: FontWeight.bold),
                           ),
@@ -254,72 +179,86 @@ class _HomeContentState extends State<HomeContent> {
 
                       const SizedBox(height: 15),
 
-                      // ✅ DOCTORS GRID (NO OVERFLOW)
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _allDoctors.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.5,
-                        ),
-                        itemBuilder: (context, index) {
-                          final d = _allDoctors[index];
+                      // ✅ ✅ FIRESTORE DOCTORS ✅
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('role', isEqualTo: 'doctor')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
 
-                          return GestureDetector(
-                            onTap: () => _navigateToDoctor(d),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
+                          final docs = snapshot.data!.docs;
 
-                                CircleAvatar(
-                                  radius: 24,
-                                  backgroundImage:
-                                      AssetImage(d.photoUrl),
-                                ),
+                          if (docs.isEmpty) {
+                            return const Text("Aucun médecin");
+                          }
 
-                                const SizedBox(height: 5),
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics:
+                                const NeverScrollableScrollPhysics(),
+                            itemCount: docs.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 1.5,
+                            ),
+                            itemBuilder: (context, index) {
+                              final data =
+                                  docs[index].data() as Map<String, dynamic>;
 
-                                Text(
-                                  d.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    
+MaterialPageRoute(
+  builder: (_) => DoctorDetailScreen(
+    doctor: Doctor.fromMap(data), // ✅ FIXED
+  ),
+),
 
-                                Text(
-                                  d.specialty,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-
-                                Row(
+                                  );
+                                },
+                                child: Column(
                                   mainAxisAlignment:
                                       MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.star,
-                                        size: 12,
-                                        color: Colors.orange),
-                                    const SizedBox(width: 2),
+
+                                    CircleAvatar(
+                                      radius: 24,
+                                      backgroundImage: NetworkImage(
+                                          data['image'] ??
+                                              "https://via.placeholder.com/150"),
+                                    ),
+
+                                    const SizedBox(height: 5),
+
                                     Text(
-                                      d.rating.toString(),
-                                      style:
-                                          const TextStyle(fontSize: 11),
+                                      data['name'] ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+
+                                    Text(
+                                      data['specialty'] ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -336,7 +275,7 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _action(
+  static Widget _action(
       IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,

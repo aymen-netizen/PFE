@@ -1,5 +1,5 @@
 class Doctor {
-  final String id;
+  final String uid; // ✅ Firebase UID (very important)
   final String name;
   final String specialty;
   final String photoUrl;
@@ -11,7 +11,7 @@ class Doctor {
   final int? shiftEnd;
 
   Doctor({
-    required this.id,
+    required this.uid,
     required this.name,
     required this.specialty,
     required this.photoUrl,
@@ -23,26 +23,27 @@ class Doctor {
     this.shiftEnd,
   });
 
-  // ✅ ✅ FIX YOUR ERROR (MOST IMPORTANT)
+  // ✅ Convert to Firestore
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'uid': uid,
       'name': name,
       'specialty': specialty,
-      'image': photoUrl, // ✅ important (match UI)
+      'image': photoUrl,
       'rating': rating,
       'reviewsCount': reviewsCount,
       'location': location,
       'phone': phone,
       'shiftStart': shiftStart,
       'shiftEnd': shiftEnd,
+      'role': 'doctor', // ✅ IMPORTANT
     };
   }
 
-  // ✅ OPTIONAL BUT VERY USEFUL
+  // ✅ Create from Firestore
   factory Doctor.fromMap(Map<String, dynamic> map) {
     return Doctor(
-      id: map['id'] ?? '',
+      uid: map['uid'] ?? '',
       name: map['name'] ?? '',
       specialty: map['specialty'] ?? '',
       photoUrl: map['image'] ?? '',
@@ -54,7 +55,10 @@ class Doctor {
       shiftEnd: map['shiftEnd'],
     );
   }
+
+  // ✅ Optional: for debugging
+  @override
+  String toString() {
+    return 'Doctor(uid: $uid, name: $name, specialty: $specialty)';
+  }
 }
-
-
-List<Doctor> mockDoctors = [];

@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DoctorAppointmentsScreen extends StatelessWidget {
-  final String doctorUid;
-
-  const DoctorAppointmentsScreen({
-    super.key,
-    required this.doctorUid,
-  });
+  const DoctorAppointmentsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text("User not authenticated")),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Doctor Appointments'),
+        title: const Text('Mes Patients'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: firestore
             .collection('appointments')
-            .where('doctorUid', isEqualTo: doctorUid)
+            .where('doctorId', isEqualTo: user.uid) // ✅ FIXED
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -30,7 +33,7 @@ class DoctorAppointmentsScreen extends StatelessWidget {
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
-            return const Center(child: Text('No patients'));
+            return const Center(child: Text('Aucun rendez-vous'));
           }
 
           return ListView.builder(
@@ -38,7 +41,9 @@ class DoctorAppointmentsScreen extends StatelessWidget {
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
+              final data =
+                  doc.data() as Map<String, dynamic>? ?? {};
+
               final status = data['status'] ?? 'pending';
 
               return Card(
@@ -52,7 +57,7 @@ class DoctorAppointmentsScreen extends StatelessWidget {
 
                   // ✅ PATIENT NAME
                   title: Text(
-                    data['patientName'] ?? '',
+                    data['patientName'] ?? 'Patient',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -64,13 +69,23 @@ class DoctorAppointmentsScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 6),
-                      Text('📅 ${data['date']}'),
-                      Text('⏰ ${data['time']}'),
+                      Text('📅 ${data['date'] ?? ''}'),
+                      Text('⏰ ${data['time'] ?? ''}'),
+
                       const SizedBox(height: 6),
 
-                      // ✅ STATUS WITH COLOR
+                      // ✅ EXTRA INFO (Optional but pro 🔥)
+                      if (data['patientPhone'] != null)
+                        Text('📞 ${data['patientPhone']}'),
+
+                      if (data['reason'] != null)
+                        Text('📝 ${data['reason']}'),
+
+                      const SizedBox(height: 6),
+
+                      // ✅ STATUS
                       Text(
-                        'Status: $status',
+                        status.toUpperCase(),
                         style: TextStyle(
                           color: _getStatusColor(status),
                           fontWeight: FontWeight.bold,
@@ -79,13 +94,14 @@ class DoctorAppointmentsScreen extends StatelessWidget {
                     ],
                   ),
 
-                  // ✅ ACTION BUTTONS (SMART)
+                  // ✅ ACTIONS
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // ▶ START CONSULTATION
                       IconButton(
-                        icon: const Icon(Icons.play_arrow, color: Colors.blue),
+                        icon: const Icon(Icons.play_arrow,
+                            color: Colors.blue),
                         onPressed: status == 'confirmed'
                             ? () async {
                                 await firestore

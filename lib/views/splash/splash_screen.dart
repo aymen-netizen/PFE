@@ -29,18 +29,15 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       await Future.delayed(const Duration(seconds: 2));
 
-      // ✅ ALWAYS CHECK USER FIRST
       final user = FirebaseAuth.instance.currentUser;
 
       if (!mounted) return;
 
-      // ✅ NOT CONNECTED → LOGIN
       if (user == null) {
         _goTo(const LoginScreen());
         return;
       }
 
-      // ✅ GET ROLE FROM FIRESTORE
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -52,7 +49,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
       Widget targetScreen;
 
-      // ✅ ROLE NAVIGATION
       switch (role) {
         case 'admin':
           targetScreen = const AdminDashboardScreen();
@@ -63,9 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
           break;
 
         case 'doctor':
-          targetScreen = DoctorAppointmentsScreen(
-            doctorUid: user.uid,
-          );
+          targetScreen = const DoctorAppointmentsScreen(); // ✅ FIXED
           break;
 
         default:
@@ -75,12 +69,10 @@ class _SplashScreenState extends State<SplashScreen> {
       _goTo(targetScreen);
 
     } catch (e) {
-      // ✅ FAILSAFE → SEND TO LOGIN
       _goTo(const LoginScreen());
     }
   }
 
-  // ✅ SAFE NAVIGATION METHOD
   void _goTo(Widget screen) {
     if (!mounted) return;
 
@@ -96,7 +88,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
     return Scaffold(
       backgroundColor: Colors.green,
-
       body: const Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),

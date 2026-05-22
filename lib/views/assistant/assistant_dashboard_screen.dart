@@ -23,7 +23,12 @@ class _AssistantDashboardScreenState
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  // ✅ BUILD APPOINTMENTS LIST
+  // ✅ NORMALIZE FUNCTION (🔥 IMPORTANT)
+  String normalize(String value) {
+    return value.toLowerCase().trim();
+  }
+
+  // ✅ BUILD APPOINTMENTS
   Widget buildAppointments(String status) {
 
   final user = FirebaseAuth.instance.currentUser!;
@@ -43,14 +48,17 @@ class _AssistantDashboardScreenState
       final userData =
           userSnapshot.data!.data() as Map<String, dynamic>;
 
-      final specialty = userData['specialty'];
+      final assistantSpecialty =
+          (userData['specialty'] ?? '')
+              .toString()
+              .toLowerCase()
+              .trim();
 
       return StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('appointments')
             .where('status', isEqualTo: status)
-            .where('specialty', isEqualTo: specialty) // ✅ THIS IS THE FIX
-            .snapshots(),
+            .snapshots(), // ✅ REMOVE specialty filter
 
         builder: (context, snapshot) {
 
@@ -58,7 +66,24 @@ class _AssistantDashboardScreenState
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data!.docs;
+          final allDocs = snapshot.data!.docs;
+
+          // ✅ ✅ ✅ SAFE FILTER
+          final docs = allDocs.where((doc) {
+
+            final data =
+                doc.data() as Map<String, dynamic>;
+
+            final appointmentSpecialty =
+                (data['specialty'] ?? '')
+                    .toString()
+                    .toLowerCase()
+                    .trim();
+
+            return appointmentSpecialty ==
+                assistantSpecialty;
+
+          }).toList();
 
           if (docs.isEmpty) {
             return const Center(child: Text("No appointments"));
@@ -73,13 +98,10 @@ class _AssistantDashboardScreenState
 
               return Card(
                 margin: const EdgeInsets.all(10),
-
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
 
                       Text(
@@ -143,47 +165,35 @@ class _AssistantDashboardScreenState
       appBar: AppBar(
         backgroundColor: Colors.green,
 
-        // ✅ FIXED TITLE (NO DUPLICATE)
         title: StreamBuilder<DocumentSnapshot>(
-  stream: FirebaseFirestore.instance
-      .collection('users')
-      .doc(FirebaseAuth.instance.currentUser!.uid)
-      .snapshots(),
-  builder: (context, snapshot) {
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .snapshots(),
 
-    if (!snapshot.hasData || !snapshot.data!.exists) {
-      return const Text(
-        "Assistant Dashboard",
-        style: TextStyle(color: Colors.white),
-      );
-    }
+          builder: (context, snapshot) {
 
-    final data =
-        snapshot.data!.data() as Map<String, dynamic>;
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return const Text(
+                "Assistant Dashboard",
+                style: TextStyle(color: Colors.white),
+              );
+            }
 
-    final specialty = data['specialty'];
+            final data =
+                snapshot.data!.data() as Map<String, dynamic>;
 
-    if (specialty == null || specialty.toString().isEmpty) {
-      return const Text(
-        "Assistant Dashboard",
-        style: TextStyle(color: Colors.white),
-      );
-    }
+            final specialty =
+                data['specialty'] ?? '';
 
-    return Text(
-      "$specialty Assistant Dashboard",
-      style: const TextStyle(color: Colors.white),
-    );
-  },
-),
+            return Text(
+              "$specialty Assistant Dashboard",
+              style: const TextStyle(color: Colors.white),
+            );
+          },
+        ),
 
-
-        iconTheme:
-            const IconThemeData(color: Colors.white),
-
-        // ✅ CHAT + LOGOUT BUTTONS
         actions: [
-
           IconButton(
             icon: const Icon(Icons.message,
                 color: Colors.white),
@@ -212,13 +222,8 @@ class _AssistantDashboardScreenState
           ),
         ],
 
-        // ✅ TABS FIXED (VISIBLE)
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-
           tabs: const [
             Tab(text: "Pending"),
             Tab(text: "Confirmed"),
@@ -229,11 +234,7 @@ class _AssistantDashboardScreenState
       body: TabBarView(
         controller: _tabController,
         children: [
-
-          // ✅ Pending
           buildAppointments('pending'),
-
-          // ✅ Confirmed
           buildAppointments('confirmed'),
         ],
       ),

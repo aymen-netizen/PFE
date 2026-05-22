@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 
 class AssistantChatScreen extends StatefulWidget {
   final String patientId;
@@ -18,7 +19,8 @@ class AssistantChatScreen extends StatefulWidget {
 class _AssistantChatScreenState
     extends State<AssistantChatScreen> {
 
-  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _controller =
+      TextEditingController();
 
   String getChatId(String id1, String id2) {
     List<String> ids = [id1, id2];
@@ -29,25 +31,20 @@ class _AssistantChatScreenState
   @override
   Widget build(BuildContext context) {
 
-    final assistant = FirebaseAuth.instance.currentUser!;
-    final chatId = getChatId(assistant.uid, widget.patientId);
+    final assistant =
+        FirebaseAuth.instance.currentUser!;
+
+    final chatId =
+        getChatId(assistant.uid, widget.patientId);
 
     return Scaffold(
       appBar: AppBar(
-  backgroundColor: Colors.green,
-  iconTheme: const IconThemeData(color: Colors.white), // ✅ FIX
-
-  leading: IconButton(
-    icon: const Icon(Icons.arrow_back),
-    onPressed: () => Navigator.pop(context),
-  ),
-
-  title: const Text(
-    "Chat",
-    style: TextStyle(color: Colors.white),
-  ),
-),
-
+        backgroundColor: Colors.green,
+        iconTheme:
+            const IconThemeData(color: Colors.white),
+        title: const Text("Chat",
+            style: TextStyle(color: Colors.white)),
+      ),
 
       body: Column(
         children: [
@@ -66,42 +63,75 @@ class _AssistantChatScreenState
 
                 if (!snapshot.hasData) {
                   return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                      child:
+                          CircularProgressIndicator());
                 }
 
                 final messages = snapshot.data!.docs;
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(10),
+                  padding:
+                      const EdgeInsets.all(10),
                   itemCount: messages.length,
 
                   itemBuilder: (context, index) {
 
                     final data =
-                        messages[index].data() as Map<String, dynamic>;
+                        messages[index].data()
+                            as Map<String, dynamic>;
 
-                    final isMe =
-                        data['senderId'] == assistant.uid;
+                    final isAssistant =
+                        data['senderId'] ==
+                            assistant.uid;
 
                     return Align(
-                      alignment: isMe
+                      alignment: isAssistant
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
 
                       child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 5),
-                        padding: const EdgeInsets.all(12),
+                        margin:
+                            const EdgeInsets.symmetric(
+                                vertical: 5),
+                        padding:
+                            const EdgeInsets.all(12),
 
                         decoration: BoxDecoration(
-                          color: isMe
-                              ? Colors.green
+                          color: isAssistant
+                              ? Colors.green.shade300
                               : Colors.grey.shade300,
                           borderRadius:
-                              BorderRadius.circular(12),
+                              BorderRadius.circular(
+                                  15),
                         ),
 
-                        child: Text(data['text'] ?? ""),
+                        child: Column(
+                          crossAxisAlignment:
+                              isAssistant
+                                  ? CrossAxisAlignment
+                                      .end
+                                  : CrossAxisAlignment
+                                      .start,
+                          children: [
+
+                            // ✅ TEXT
+                            if (data['text'] != null)
+                              Text(data['text']),
+
+                            // ✅ IMAGE (CAN VIEW ONLY)
+                            if (data['image'] != null)
+                              Padding(
+                                padding:
+                                    const EdgeInsets
+                                        .only(top: 8),
+                                child: Image.memory(
+                                  base64Decode(
+                                      data['image']),
+                                  height: 150,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -110,47 +140,56 @@ class _AssistantChatScreenState
             ),
           ),
 
-          // ✅ INPUT
+          // ✅ INPUT (TEXT ONLY)
           Container(
-            padding: const EdgeInsets.all(10),
-
+            padding:
+                const EdgeInsets.all(10),
             child: Row(
               children: [
 
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: InputDecoration(
+                    decoration:
+                        InputDecoration(
                       hintText: "Type message...",
-                      border: OutlineInputBorder(
+                      border:
+                          OutlineInputBorder(
                         borderRadius:
-                            BorderRadius.circular(20),
+                            BorderRadius.circular(
+                                20),
                       ),
                     ),
                   ),
                 ),
 
                 IconButton(
-                  icon: const Icon(Icons.send),
+                  icon: const Icon(Icons.send,
+                      color: Colors.green),
                   onPressed: () async {
 
-                    final text = _controller.text.trim();
+                    final text =
+                        _controller.text.trim();
                     if (text.isEmpty) return;
 
-                    // ✅ SEND MESSAGE
-                    await FirebaseFirestore.instance
+                    // ✅ SEND TEXT ONLY
+                    await FirebaseFirestore
+                        .instance
                         .collection('chats')
                         .doc(chatId)
                         .collection('messages')
                         .add({
-                      'senderId': assistant.uid,
+                      'senderId':
+                          assistant.uid,
                       'text': text,
                       'timestamp':
-                          FieldValue.serverTimestamp(),
+                          FieldValue
+                              .serverTimestamp(),
                     });
 
-                    // ✅ UPDATE CHAT ROOT (KEEP CONSISTENT)
-                    await FirebaseFirestore.instance
+                    // ✅ UPDATE CHAT
+                    await FirebaseFirestore
+                        .instance
                         .collection('chats')
                         .doc(chatId)
                         .set({
@@ -158,10 +197,12 @@ class _AssistantChatScreenState
                         assistant.uid,
                         widget.patientId
                       ],
-                      'assistantId': assistant.uid,
+                      'assistantId':
+                          assistant.uid,
                       'lastMessage': text,
                       'updatedAt':
-                          FieldValue.serverTimestamp(),
+                          FieldValue
+                              .serverTimestamp(),
                     }, SetOptions(merge: true));
 
                     _controller.clear();

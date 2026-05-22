@@ -7,9 +7,13 @@ version: 1.0.0+1
 environment:
   sdk: ^3.10.8
 
+
 dependencies:
   flutter:
     sdk: flutter
+
+  image_picker: ^1.0.7
+
 
   cupertino_icons: ^1.0.8
 

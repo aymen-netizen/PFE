@@ -1,39 +1,42 @@
 class Appointment {
   final String id;
+  final String doctorId; // ✅ IMPORTANT
   final String doctorName;
   final String specialty;
   final DateTime date;
   final String time;
-  final String status; // pending, confirmed, completed, cancelled
+  final String status;
 
   Appointment({
     required this.id,
+    required this.doctorId,
     required this.doctorName,
     required this.specialty,
     required this.date,
     required this.time,
     required this.status,
   });
+
+  factory Appointment.fromMap(String id, Map<String, dynamic> map) {
+    return Appointment(
+      id: id,
+      doctorId: map['doctorId'] ?? '',
+      doctorName: map['doctorName'] ?? '',
+      specialty: map['specialty'] ?? '',
+      date: DateTime.parse(map['date']),
+      time: map['time'] ?? '',
+      status: map['status'] ?? 'pending',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'doctorId': doctorId,
+      'doctorName': doctorName,
+      'specialty': specialty,
+      'date': date.toIso8601String(),
+      'time': time,
+      'status': status,
+    };
+  }
 }
-
-List<Appointment> mockAppointments = [
-  Appointment(
-    id: '1',
-    doctorName: 'Dr. Marie Dupon',
-    specialty: 'Médecine générale',
-    date: DateTime.now().add(const Duration(days: 2)),
-    time: '10:00',
-    status: 'confirmed',
-  ),
-  Appointment(
-    id: '2',
-    doctorName: 'Dr. Jean Martin',
-    specialty: 'Dentiste',
-    date: DateTime.now().add(const Duration(days: 5)),
-    time: '14:30',
-    status: 'pending',
-  ),
-];
-
-List<Appointment> userAppointments = List<Appointment>.from(mockAppointments);
-
