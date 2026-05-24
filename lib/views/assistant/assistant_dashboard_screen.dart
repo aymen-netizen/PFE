@@ -23,144 +23,234 @@ class _AssistantDashboardScreenState
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  // ✅ NORMALIZE FUNCTION (🔥 IMPORTANT)
-  String normalize(String value) {
-    return value.toLowerCase().trim();
+  // ✅ STATUS BADGE
+  Widget buildStatusBadge(String status) {
+    Color color;
+    String label;
+
+    switch (status) {
+      case "confirmed":
+        color = Colors.green;
+        label = "Confirmed";
+        break;
+      case "cancelled":
+        color = Colors.red;
+        label = "Cancelled";
+        break;
+      case "pending":
+      default:
+        color = Colors.orange;
+        label = "Pending";
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   // ✅ BUILD APPOINTMENTS
-  Widget buildAppointments(String status) {
+  Widget buildAppointments(String tabStatus) {
 
-  final user = FirebaseAuth.instance.currentUser!;
+    final user = FirebaseAuth.instance.currentUser!;
 
-  return StreamBuilder<DocumentSnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .snapshots(),
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, userSnapshot) {
 
-    builder: (context, userSnapshot) {
+        if (!userSnapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-      if (!userSnapshot.hasData) {
-        return const Center(child: CircularProgressIndicator());
-      }
+        final userData =
+            userSnapshot.data!.data() as Map<String, dynamic>;
 
-      final userData =
-          userSnapshot.data!.data() as Map<String, dynamic>;
+        final assistantSpecialty =
+            (userData['specialty'] ?? '')
+                .toString()
+                .toLowerCase()
+                .trim();
 
-      final assistantSpecialty =
-          (userData['specialty'] ?? '')
-              .toString()
-              .toLowerCase()
-              .trim();
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('appointments')
+              .snapshots(),
+          builder: (context, snapshot) {
 
-      return StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('appointments')
-            .where('status', isEqualTo: status)
-            .snapshots(), // ✅ REMOVE specialty filter
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        builder: (context, snapshot) {
-
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final allDocs = snapshot.data!.docs;
-
-          // ✅ ✅ ✅ SAFE FILTER
-          final docs = allDocs.where((doc) {
-
-            final data =
-                doc.data() as Map<String, dynamic>;
-
-            final appointmentSpecialty =
-                (data['specialty'] ?? '')
-                    .toString()
-                    .toLowerCase()
-                    .trim();
-
-            return appointmentSpecialty ==
-                assistantSpecialty;
-
-          }).toList();
-
-          if (docs.isEmpty) {
-            return const Center(child: Text("No appointments"));
-          }
-
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
+            // ✅ FILTER CORRECTLY
+            final docs = snapshot.data!.docs.where((doc) {
 
               final data =
-                  docs[index].data() as Map<String, dynamic>;
+                  doc.data() as Map<String, dynamic>;
 
-              return Card(
-                margin: const EdgeInsets.all(10),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              final specialty =
+                  (data['specialty'] ?? '')
+                      .toString()
+                      .toLowerCase()
+                      .trim();
 
-                      Text(
-                        data['doctorName'] ?? '',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold),
-                      ),
+              final status =
+                  (data['status'] ?? 'pending');
 
-                      Text("👤 ${data['patientName']}"),
-                      Text("📅 ${data['date']}"),
-                      Text("⏰ ${data['time']}"),
+              return specialty == assistantSpecialty &&
+                     status == tabStatus;
 
-                      const SizedBox(height: 10),
+            }).toList();
 
-                      if (status == 'pending')
-                        Row(
+            if (docs.isEmpty) {
+              return const Center(child: Text("No appointments"));
+            }
+
+            return ListView.builder(
+              itemCount: docs.length,
+              itemBuilder: (context, index) {
+
+                final docSnap = docs[index];
+                final data =
+                    docSnap.data() as Map<String, dynamic>;
+
+                final patientId = data['patientId'];
+                final doctorId = data['doctorId'];
+                final status = data['status'] ?? 'pending';
+
+                // ✅ FETCH NAMES
+                return FutureBuilder(
+                  future: Future.wait([
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(patientId)
+                        .get(),
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(doctorId)
+                        .get(),
+                  ]),
+                  builder: (context,
+                      AsyncSnapshot<List<DocumentSnapshot>> snapshotUsers) {
+
+                    if (!snapshotUsers.hasData) {
+                      return const Center(
+                          child: CircularProgressIndicator());
+                    }
+
+                    final patientData =
+                        snapshotUsers.data![0].data()
+                            as Map<String, dynamic>?;
+                    final doctorData =
+                        snapshotUsers.data![1].data()
+                            as Map<String, dynamic>?;
+
+                    final patientName =
+                        patientData?['name'] ?? 'Patient';
+                    final doctorName =
+                        doctorData?['name'] ?? 'Doctor';
+
+                    return Card(
+                      margin: const EdgeInsets.all(10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
 
-                            ElevatedButton(
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection('appointments')
-                                    .doc(docs[index].id)
-                                    .update({'status': 'confirmed'});
-                              },
-                              child: const Text("Confirm"),
+                            // ✅ DOCTOR NAME
+                            Text(
+                              "🩺 $doctorName",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
 
-                            const SizedBox(width: 8),
+                            const SizedBox(height: 4),
 
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red),
-                              onPressed: () async {
-                                await FirebaseFirestore.instance
-                                    .collection('appointments')
-                                    .doc(docs[index].id)
-                                    .update({'status': 'cancelled'});
-                              },
-                              child: const Text("Cancel"),
-                            ),
+                            // ✅ PATIENT NAME
+                            Text("👤 $patientName"),
+
+                            Text("📅 ${data['date']}"),
+
+                            const SizedBox(height: 10),
+
+                            // ✅ STATUS BADGE
+                            buildStatusBadge(status),
+
+                            const SizedBox(height: 10),
+
+                            // ✅ ACTION BUTTONS
+                            if (status == 'pending')
+                              Row(
+                                children: [
+
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      await FirebaseFirestore
+                                          .instance
+                                          .collection('appointments')
+                                          .doc(docSnap.id)
+                                          .update({
+                                        'status': 'confirmed'
+                                      });
+                                    },
+                                    child:
+                                        const Text("✅ Confirm"),
+                                  ),
+
+                                  const SizedBox(width: 8),
+
+                                  ElevatedButton(
+                                    style:
+                                        ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                Colors.red),
+                                    onPressed: () async {
+                                      await FirebaseFirestore
+                                          .instance
+                                          .collection('appointments')
+                                          .doc(docSnap.id)
+                                          .update({
+                                        'status': 'cancelled'
+                                      });
+                                    },
+                                    child:
+                                        const Text("❌ Cancel"),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      );
-    },
-  );
-}
-
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.green,
@@ -170,24 +260,17 @@ class _AssistantDashboardScreenState
               .collection('users')
               .doc(FirebaseAuth.instance.currentUser!.uid)
               .snapshots(),
-
           builder: (context, snapshot) {
 
             if (!snapshot.hasData || !snapshot.data!.exists) {
-              return const Text(
-                "Assistant Dashboard",
-                style: TextStyle(color: Colors.white),
-              );
+              return const Text("Assistant Dashboard");
             }
 
             final data =
                 snapshot.data!.data() as Map<String, dynamic>;
 
-            final specialty =
-                data['specialty'] ?? '';
-
             return Text(
-              "$specialty Assistant Dashboard",
+              "${data['specialty']} Assistant Dashboard",
               style: const TextStyle(color: Colors.white),
             );
           },
@@ -195,8 +278,7 @@ class _AssistantDashboardScreenState
 
         actions: [
           IconButton(
-            icon: const Icon(Icons.message,
-                color: Colors.white),
+            icon: const Icon(Icons.message, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -209,8 +291,7 @@ class _AssistantDashboardScreenState
           ),
 
           IconButton(
-            icon: const Icon(Icons.logout,
-                color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               Navigator.pushNamedAndRemoveUntil(

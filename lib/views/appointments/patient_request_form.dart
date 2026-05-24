@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../payment/payment_screen.dart';
 
 class PatientRequestForm extends StatefulWidget {
-  final String appointmentId;
 
-  const PatientRequestForm({super.key, required this.appointmentId});
+  final String doctorId;
+  final String doctorName;
+  final String specialty;
+  final String selectedDate;
+  final String selectedTime;
+
+  const PatientRequestForm({
+    super.key,
+    required this.doctorId,
+    required this.doctorName,
+    required this.specialty,
+    required this.selectedDate,
+    required this.selectedTime,
+  });
 
   @override
   State<PatientRequestForm> createState() =>
@@ -37,84 +49,142 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
     });
   }
 
-  Future<void> _save() async {
+  String _buildSymptomsText() {
+    String result = selectedSymptoms.join(', ');
 
-    // ✅ VALIDATION
-    if (_reasonController.text.isEmpty &&
-        selectedSymptoms.isEmpty) {
+    if (_reasonController.text.isNotEmpty) {
+      result += result.isNotEmpty
+          ? ' - ${_reasonController.text}'
+          : _reasonController.text;
+    }
+
+    return result;
+  }
+
+  void _next() {
+
+    if (selectedSymptoms.isEmpty &&
+        _reasonController.text.trim().isEmpty) {
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-              'Please select symptoms or enter a reason'),
+              '⚠️ Please select at least one symptom or enter details'),
         ),
       );
       return;
     }
 
-    await FirebaseFirestore.instance
-        .collection('appointments')
-        .doc(widget.appointmentId)
-        .update({
-      'reason': _reasonController.text,
-      'symptoms': selectedSymptoms,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    final symptomsText = _buildSymptomsText();
 
-    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          doctorId: widget.doctorId,
+          doctorName: widget.doctorName,   // ✅ IMPORTANT
+          specialty: widget.specialty,
+          selectedDate: widget.selectedDate,
+          selectedTime: widget.selectedTime, // ✅ IMPORTANT
+          symptoms: symptomsText,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Symptoms')),
+      appBar: AppBar(
+        title: const Text('Describe Your Problem'),
+        backgroundColor: Colors.green,
+      ),
 
       body: Padding(
         padding: const EdgeInsets.all(16),
 
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
+            // ✅ DOCTOR INFO (NEW - VERY IMPORTANT)
+            Card(
+              margin: const EdgeInsets.only(bottom: 15),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                  children: [
+                    Text("🩺 ${widget.doctorName}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold)),
+                    Text("📅 ${widget.selectedDate}"),
+                    Text("⏰ ${widget.selectedTime}"),
+                  ],
+                ),
+              ),
+            ),
+
+            // ✅ TEXT FIELD
             TextField(
               controller: _reasonController,
               decoration: const InputDecoration(
-                labelText: 'Add more details',
+                labelText: 'Add more details (optional)',
                 border: OutlineInputBorder(),
               ),
+              maxLines: 3,
             ),
 
             const SizedBox(height: 20),
 
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Select Symptoms',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold),
-              ),
+            const Text(
+              'Select Symptoms',
+              style:
+                  TextStyle(fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 10),
 
+            // ✅ SYMPTOMS LIST
             Expanded(
               child: ListView(
                 children: symptomsList.map((symptom) {
-                  return CheckboxListTile(
-                    value:
-                        selectedSymptoms.contains(symptom),
-                    title: Text(symptom),
-                    onChanged: (_) => _toggle(symptom),
+
+                  final isSelected =
+                      selectedSymptoms.contains(symptom);
+
+                  return Card(
+                    child: ListTile(
+                      title: Text(symptom),
+                      trailing: Checkbox(
+                        value: isSelected,
+                        onChanged: (_) => _toggle(symptom),
+                      ),
+                      onTap: () => _toggle(symptom),
+                    ),
                   );
+
                 }).toList(),
               ),
             ),
 
             const SizedBox(height: 10),
 
+            // ✅ BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _save,
-                child: const Text('Save & Continue'),
+                style: ElevatedButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16),
+                ),
+                onPressed: _next,
+                child: const Text(
+                  'Continue to Payment',
+                  style: TextStyle(fontSize: 16),
+                ),
               ),
             ),
           ],

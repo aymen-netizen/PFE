@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../appointments/patient_request_form.dart'; // ✅ ADD THIS
+
+import '../appointments/patient_request_form.dart';
 
 class FirebaseBookingScreen extends StatefulWidget {
   final Map<String, dynamic> doctor;
@@ -20,248 +20,444 @@ class _FirebaseBookingScreenState
     extends State<FirebaseBookingScreen> {
 
   DateTime? selectedDate;
-  TimeOfDay? selectedTime;
+  String? selectedTime;
 
-  // ✅ IMAGE FUNCTION (UNCHANGED)
-  String getDoctorImage(String specialty, String uid) {
-
-    final Map<String, List<String>> imagesMap = {
-
-      'cardiologue': [
-        'assets/doctors/cardiologue/cardiologue1.jpg',
-        'assets/doctors/cardiologue/cardiologue2.jpg',
-        'assets/doctors/cardiologue/cardiologue3.jpg',
-        'assets/doctors/cardiologue/cardiologue4.jpg',
-        'assets/doctors/cardiologue/cardiologue5.jpg',
-      ],
-
-      'dentiste': [
-        'assets/doctors/dentiste/dentiste1.jpg',
-        'assets/doctors/dentiste/dentiste2.jpg',
-        'assets/doctors/dentiste/dentiste3.jpg',
-        'assets/doctors/dentiste/dentiste4.jpg',
-        'assets/doctors/dentiste/dentiste5.jpg',
-      ],
-
-      'generaliste': [
-        'assets/doctors/medecine_generale/medecine_generale1.jpg',
-        'assets/doctors/medecine_generale/medecine_generale2.jpg',
-        'assets/doctors/medecine_generale/medecine_generale3.jpg',
-        'assets/doctors/medecine_generale/medecine_generale4.jpg',
-        'assets/doctors/medecine_generale/medecine_generale5.jpg',
-      ],
-
-      'dermatologue': [
-        'assets/doctors/medecine_generale/medecine_generale1.jpg',
-      ],
-    };
-
-    final list =
-        imagesMap[specialty.toLowerCase()] ??
-            imagesMap['dentiste']!;
-
-    final index = uid.hashCode.abs() % list.length;
-
-    return list[index];
-  }
+  List<String> availableDays = [];
 
   @override
   Widget build(BuildContext context) {
 
-    final user = FirebaseAuth.instance.currentUser!;
-
-    final doctorName = widget.doctor['name'] ?? '';
-    final doctorSpecialty = widget.doctor['specialty'] ?? '';
-    final doctorUid = widget.doctor['uid'] ?? '';
+    final doctorId = widget.doctor['uid'];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(doctorName),
-      ),
+      backgroundColor: const Color(0xFFF5F7FB),
 
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('schedules')
+            .doc(doctorId)
+            .snapshots(),
 
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+        builder: (context, snapshot) {
 
-            const SizedBox(height: 20),
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text("No schedule"));
+          }
 
-            // ✅ IMAGE
-            CircleAvatar(
-              radius: 50,
-              backgroundImage: AssetImage(
-                getDoctorImage(
-                  doctorSpecialty,
-                  doctorUid,
-                ),
-              ),
-            ),
+          final data =
+              snapshot.data!.data() as Map<String, dynamic>;
 
-            const SizedBox(height: 15),
+          availableDays =
+              List<String>.from(data['days']);
 
-            Text(
-              doctorName,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+          final start = data['start'];
+          final end = data['end'];
 
-            Text(
-              doctorSpecialty,
-              style: const TextStyle(color: Colors.grey),
-            ),
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
 
-            const SizedBox(height: 30),
+                  // ✅ HEADER (same)
+                  Container(
+                    height: 320,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF0F7B8E),
+                          Color(0xFF14919B),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(40),
+                        bottomRight: Radius.circular(40),
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
 
-            // ✅ DATE PICKER
-            ElevatedButton(
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime(2030),
-                );
+                        Positioned(
+                          left: 20,
+                          top: 20,
+                          child: CircleAvatar(
+                            backgroundColor:
+                                Colors.white.withOpacity(0.2),
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back,
+                                  color: Colors.white),
+                              onPressed: () =>
+                                  Navigator.pop(context),
+                            ),
+                          ),
+                        ),
 
-                if (picked != null) {
-                  setState(() {
-                    selectedDate = picked;
-                  });
-                }
-              },
-              child: Text(
-                selectedDate == null
-                    ? "Select Date"
-                    : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-              ),
-            ),
+                        Center(
+                          child: CircleAvatar(
+                            radius: 80,
+                            backgroundImage:
+                                const AssetImage(
+                                    "assets/doctors/doctor1.jpg"),
+                          ),
+                        ),
 
-            const SizedBox(height: 20),
-
-            // ✅ TIME PICKER
-            ElevatedButton(
-              onPressed: () async {
-                final picked = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-
-                if (picked != null) {
-                  setState(() {
-                    selectedTime = picked;
-                  });
-                }
-              },
-              child: Text(
-                selectedTime == null
-                    ? "Select Time"
-                    : selectedTime!.format(context),
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // ✅ CONFIRM BUTTON
-            SizedBox(
-              width: double.infinity,
-
-              child: ElevatedButton(
-                onPressed:
-                    (selectedDate == null ||
-                            selectedTime == null)
-                        ? null
-                        : () async {
-
-                            // ✅ FETCH SCHEDULE
-                            final scheduleDoc =
-                                await FirebaseFirestore.instance
-                                    .collection('schedules')
-                                    .doc(doctorUid)
-                                    .get();
-
-                            if (!scheduleDoc.exists) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Doctor has no schedule"),
-                                ),
-                              );
-                              return;
-                            }
-
-                            final schedule = scheduleDoc.data()!;
-                            final List days = schedule['days'] ?? [];
-
-                            // ✅ DAY NAME
-                            final dayName = [
-                              'Monday','Tuesday','Wednesday',
-                              'Thursday','Friday','Saturday','Sunday'
-                            ][selectedDate!.weekday - 1];
-
-                            if (!days.contains(dayName)) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text("Not available on $dayName"),
-                                ),
-                              );
-                              return;
-                            }
-
-                            // ✅ TIME CHECK
-                            final hour = selectedTime!.hour;
-
-                            if (hour < 8 || hour > 14) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Working hours: 8 → 14"),
-                                ),
-                              );
-                              return;
-                            }
-
-                            final formattedDate =
-                                "${selectedDate!.year}-${selectedDate!.month}-${selectedDate!.day}";
-
-                            final formattedTime =
-                                selectedTime!.format(context);
-
-                            // ✅ SAVE APPOINTMENT
-                            final docRef =
-                                await FirebaseFirestore.instance
-                                    .collection('appointments')
-                                    .add({
-                              'patientId': user.uid,
-                              'patientName': user.email ?? '',
-                              'doctorId': doctorUid,
-                              'doctorName': doctorName,
-                              'specialty': doctorSpecialty.toLowerCase(),
-                              'status': 'pending',
-                              'date': formattedDate,
-                              'time': formattedTime,
-                            });
-
-                            // ✅ 🔥 OPEN FORM
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    PatientRequestForm(
-                                  appointmentId:
-                                      docRef.id,
+                        Positioned(
+                          bottom: 25,
+                          left: 25,
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.doctor['name'],
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight:
+                                      FontWeight.bold,
                                 ),
                               ),
+                              Row(
+                                children: const [
+                                  Text("Cardiologue",
+                                      style: TextStyle(
+                                          color:
+                                              Colors.white70)),
+                                  SizedBox(width: 8),
+                                  Icon(Icons.star,
+                                      color: Colors.amber,
+                                      size: 16),
+                                  Text(" 4.8",
+                                      style: TextStyle(
+                                          color:
+                                              Colors.white)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Positioned(
+                          bottom: 25,
+                          right: 20,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: IconButton(
+                              icon: const Icon(Icons.phone,
+                                  color: Color(0xFF0F7B8E)),
+                              onPressed: () {},
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ✅ STATS
+                  Container(
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius:
+                          BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceAround,
+                      children: [
+                        _Stat("8 years", "Experience"),
+                        _Stat("2.7K+", "Patients"),
+                        _Stat("4.8", "Reviews"),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // ✅ DATE + TIME
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+
+                        // ✅ DATE CARD
+                        const Text(
+                          "Select Date",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        GestureDetector(
+                          onTap: () async {
+
+                            final picked =
+                                await showDatePicker(
+                              context: context,
+                              initialDate:
+                                  DateTime.now(),
+                              firstDate:
+                                  DateTime.now(),
+                              lastDate:
+                                  DateTime(2030),
                             );
+
+                            if (picked != null) {
+
+                              final dayName = [
+                                'Monday','Tuesday','Wednesday',
+                                'Thursday','Friday','Saturday','Sunday'
+                              ][picked.weekday - 1];
+
+                              if (!availableDays
+                                  .contains(dayName)) {
+
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "Doctor not available this day"),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              setState(() {
+                                selectedDate = picked;
+                              });
+                            }
                           },
 
-                child:
-                    const Text("Confirm Appointment"),
+                          child: _selectionCard(
+                            icon: Icons.calendar_month,
+                            text: selectedDate == null
+                                ? "Select a date"
+                                : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ✅ TIME CARD
+                        const Text(
+                          "Select Time",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        GestureDetector(
+                          onTap: () async {
+
+                            if (selectedDate == null) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      "Select date first"),
+                                ),
+                              );
+                              return;
+                            }
+
+                            final picked =
+                                await showTimePicker(
+                              context: context,
+                              initialTime:
+                                  TimeOfDay.now(),
+                            );
+
+                            if (picked != null) {
+
+                              if (!isTimeAllowed(
+                                  picked, start, end)) {
+
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        "Outside working hours"),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              setState(() {
+                                selectedTime =
+                                    picked.format(context);
+                              });
+                            }
+                          },
+
+                          child: _selectionCard(
+                            icon: Icons.access_time,
+                            text: selectedTime ??
+                                "Select a time",
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // ✅ BOOK
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            style:
+                                ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  const Color(0xFF0F7B8E),
+                              shape:
+                                  RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(
+                                        30),
+                              ),
+                            ),
+                            onPressed:
+                                selectedDate == null ||
+                                        selectedTime == null
+                                    ? null
+                                    : () {
+
+                                        final formattedDate =
+                                            "${selectedDate!.year}-${selectedDate!.month}-${selectedDate!.day}";
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                PatientRequestForm(
+                                              doctorId:
+                                                  doctorId,
+                                              doctorName:
+                                                  widget.doctor[
+                                                      'name'],
+                                              specialty:
+                                                  widget.doctor[
+                                                      'specialty'],
+                                              selectedDate:
+                                                  formattedDate,
+                                              selectedTime:
+                                                  selectedTime!,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                            child: const Text(
+                              "Book Appointment - 50 DT",
+                              style: TextStyle(
+                                  fontWeight:
+                                      FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  // ✅ ✅ NICE CARD WIDGET
+  Widget _selectionCard({required IconData icon, required String text}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 16,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+
+          Icon(icon, color: const Color(0xFF0F7B8E)),
+
+          const SizedBox(width: 15),
+
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+
+          const Icon(Icons.arrow_forward_ios,
+              size: 16, color: Colors.grey),
+        ],
+      ),
+    );
+  }
+
+  bool isTimeAllowed(
+    TimeOfDay picked,
+    String start,
+    String end,
+  ) {
+
+    TimeOfDay parse(String time) {
+      final parts = time.split(" ");
+      final hm = parts[0].split(":");
+
+      int hour = int.parse(hm[0]);
+      int minute = int.parse(hm[1]);
+
+      if (parts[1] == "PM" && hour != 12) hour += 12;
+      if (parts[1] == "AM" && hour == 12) hour = 0;
+
+      return TimeOfDay(hour: hour, minute: minute);
+    }
+
+    final startTime = parse(start);
+    final endTime = parse(end);
+
+    int pickedMin = picked.hour * 60 + picked.minute;
+    int startMin = startTime.hour * 60 + startTime.minute;
+    int endMin = endTime.hour * 60 + endTime.minute;
+
+    return pickedMin >= startMin &&
+        pickedMin <= endMin;
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _Stat(this.value, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value,
+            style:
+                const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 5),
+        Text(label,
+            style: const TextStyle(color: Colors.grey)),
+      ],
     );
   }
 }

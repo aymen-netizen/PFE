@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'chat_screen.dart';
+import 'package:newapp/views/chat/chat_screen.dart';
 
 class SelectAssistantScreen extends StatelessWidget {
   const SelectAssistantScreen({super.key});
@@ -8,9 +8,11 @@ class SelectAssistantScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FB),
+
       appBar: AppBar(
         title: const Text("Select Assistant"),
-        backgroundColor: Colors.green,
+        backgroundColor: const Color(0xFF0F7B8E),
       ),
 
       body: StreamBuilder<QuerySnapshot>(
@@ -22,96 +24,114 @@ class SelectAssistantScreen extends StatelessWidget {
         builder: (context, snapshot) {
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No assistants found"));
+            return const Center(
+              child: Text("No assistants found"),
+            );
           }
 
           final assistants = snapshot.data!.docs;
 
           return ListView.builder(
+            padding: const EdgeInsets.all(12),
             itemCount: assistants.length,
+
             itemBuilder: (context, index) {
 
               final data =
                   assistants[index].data() as Map<String, dynamic>;
 
               final assistantId = assistants[index].id;
-
               final name = data['name'] ?? "Assistant";
-              final profession = data['profession'] ?? "Unknown";
+              
+              // ✅ IMPORTANT FIX
+              final specialty = data['specialty'] ?? "General";
 
-              return InkWell(
+              return GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ChatScreen(
                         assistantId: assistantId,
-                        profession: profession,
+                        profession: specialty, // ✅ correct value
                       ),
                     ),
                   );
                 },
 
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 12),
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.all(14),
 
                   decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Colors.grey.shade300,
-                        width: 0.5,
-                      ),
-                    ),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                      )
+                    ],
                   ),
 
                   child: Row(
                     children: [
 
                       // ✅ AVATAR
-                      const CircleAvatar(
-                        radius: 26,
-                        backgroundColor: Colors.green,
-                        child: Icon(Icons.person, color: Colors.white),
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: const Color(0xFFE8F7F8),
+                        child: const Icon(
+                          Icons.medical_services,
+                          color: Color(0xFF0F7B8E),
+                        ),
                       ),
 
                       const SizedBox(width: 12),
 
-                      // ✅ TEXT AREA
+                      // ✅ TEXT
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
 
-                            // ✅ NAME
                             Text(
                               name,
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
                                 fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
 
                             const SizedBox(height: 4),
 
-                            // ✅ PROFESSION
                             Text(
-                              profession,
+                              specialty, // ✅ cardiologue / dentiste...
                               style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.black54,
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+
+                            const SizedBox(height: 4),
+
+                            const Text(
+                              "AI Assistant • Online",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
                               ),
                             ),
                           ],
                         ),
                       ),
 
-                      // ✅ CHEVRON
                       const Icon(
                         Icons.arrow_forward_ios,
                         size: 16,

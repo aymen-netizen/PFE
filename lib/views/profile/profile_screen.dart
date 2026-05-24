@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../../services/card_service.dart';
-import '../../../widget/buttons/primary_button.dart';
 import '../../../widget/input/customertextfield.dart';
 import '../auth/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,41 +8,33 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() =>
+      _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
 
   bool _isEditing = false;
-  bool _isSaving = false;
 
   Map<String, dynamic>? userData;
 
-  Map<String, String>? _savedCard;
+  // ✅ CARD
   bool _showCardForm = false;
-
-  final _cardNameCtrl = TextEditingController();
   final _cardNumberCtrl = TextEditingController();
   final _cardExpiryCtrl = TextEditingController();
-  final _cardCvvCtrl = TextEditingController();
-  final _cardFormKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
     loadUserData();
-    _loadCard();
   }
 
-  // ✅ LOAD USER FROM FIRESTORE
   Future<void> loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
-
     if (user == null) return;
 
     final doc = await FirebaseFirestore.instance
@@ -57,197 +46,290 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (mounted && data != null) {
       setState(() {
+
         userData = data;
 
         _nameController.text = data['name'] ?? '';
         _emailController.text = data['email'] ?? '';
         _phoneController.text = data['phone'] ?? '';
+
+        _cardNumberCtrl.text =
+            data['cardNumber'] ?? '';
+        _cardExpiryCtrl.text =
+            data['cardExpiry'] ?? '';
       });
     }
   }
 
-  Future<void> _loadCard() async {
-    final card = await CardService.getCard();
-    if (mounted) setState(() => _savedCard = card);
+  String maskCard(String number) {
+    if (number.length < 4) return "****";
+    return "**** **** **** ${number.substring(number.length - 4)}";
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _cardNameCtrl.dispose();
-    _cardNumberCtrl.dispose();
-    _cardExpiryCtrl.dispose();
-    _cardCvvCtrl.dispose();
-    super.dispose();
-  }
+  // ✅ PREMIUM CARD
+  Widget buildAnimatedCard(String cardNumber, String expiry) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
 
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
+      transform: Matrix4.identity()
+        ..scale(_showCardForm ? 0.95 : 1.0),
 
-    setState(() => _isSaving = true);
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
 
-    final user = FirebaseAuth.instance.currentUser;
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A5FC1), Color(0xFF6A82FB)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
 
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-        'name': _nameController.text.trim(),
-        'phone': _phoneController.text.trim(),
-      });
-    }
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
 
-    setState(() {
-      _isSaving = false;
-      _isEditing = false;
-    });
+          const Text("MASTER CARD",
+              style: TextStyle(color: Colors.white70)),
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profil mis à jour !'),
-        backgroundColor: Colors.green,
+          const SizedBox(height: 20),
+
+          Text(
+            maskCard(cardNumber),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              letterSpacing: 2,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Row(
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("CARD HOLDER",
+                  style: TextStyle(color: Colors.white70)),
+              Text(expiry,
+                  style:
+                      const TextStyle(color: Colors.white70)),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          Text(_nameController.text,
+              style: const TextStyle(color: Colors.white)),
+        ],
       ),
     );
   }
 
-  Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+  Future<void> _saveProfile() async {
 
-    if (!mounted) return;
+    final user = FirebaseAuth.instance.currentUser;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user!.uid)
+        .update({
+      'name': _nameController.text,
+      'phone': _phoneController.text,
+    });
+
+    setState(() => _isEditing = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Profile updated ✅")),
+    );
+  }
+
+  Future<void> _saveCard() async {
+
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({
+      'cardNumber': _cardNumberCtrl.text,
+      'cardExpiry': _cardExpiryCtrl.text,
+    });
+
+    setState(() {
+      _showCardForm = false;
+
+      userData!['cardNumber'] =
+          _cardNumberCtrl.text;
+      userData!['cardExpiry'] =
+          _cardExpiryCtrl.text;
+    });
+  }
+
+  Future<void> _logout() async {
+
+    await FirebaseAuth.instance.signOut();
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(
+          builder: (_) => const LoginScreen()),
       (route) => false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ LOADING STATE
+
     if (userData == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
+    final cardNumber = userData!['cardNumber'] ?? '';
+    final expiry = userData!['cardExpiry'] ?? '';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mon Profil'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (_isEditing) _saveProfile();
-              else setState(() => _isEditing = true);
-            },
-            child: Text(
-              _isEditing ? 'Sauvegarder' : 'Modifier',
-              style: const TextStyle(color: Colors.green),
-            ),
-          ),
-        ],
       ),
+
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // ✅ HEADER
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.08)),
+
+            const SizedBox(height: 20),
+
+            Text(
+              _nameController.text,
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ✅ ✅ ✅ PROFILE EDIT SECTION
+            Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor:
-                        Colors.green.withOpacity(0.15),
-                    child: const Icon(Icons.person,
-                        size: 50, color: Colors.green),
-                  ),
-                  const SizedBox(height: 12),
 
-                  // ✅ REAL NAME
-                  Text(
-                    _nameController.text,
-                    style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
+                  Customertextfield(
+                    hintText: "Nom complet",
+                    controller: _nameController,
+                    isPassword: false,
+                    enabled: _isEditing,
                   ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 10),
 
-                  // ✅ REAL EMAIL
-                  Text(
-                    _emailController.text,
-                    style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14),
+                  Customertextfield(
+                    hintText: "Email",
+                    controller: _emailController,
+                    isPassword: false,
+                    enabled: false,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Customertextfield(
+                    hintText: "Téléphone",
+                    controller: _phoneController,
+                    isPassword: false,
+                    enabled: _isEditing,
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_isEditing) {
+                        _saveProfile();
+                      } else {
+                        setState(() {
+                          _isEditing = true;
+                        });
+                      }
+                    },
+                    child:
+                        Text(_isEditing ? "Save" : "Edit Profile"),
                   ),
                 ],
               ),
             ),
 
+            const Divider(),
+
+            // ✅ CARD SECTION
             Padding(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    Customertextfield(
-                      hintText: 'Nom complet',
-                      controller: _nameController,
-                      isPassword: false,
-                      enabled: _isEditing,
-                    ),
-                    const SizedBox(height: 16),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
 
-                    Customertextfield(
-                      hintText: 'Email',
-                      controller: _emailController,
-                      isPassword: false,
-                      enabled: false,
-                    ),
-                    const SizedBox(height: 16),
-
-                    Customertextfield(
-                      hintText: 'Téléphone',
-                      controller: _phoneController,
-                      isPassword: false,
-                      enabled: _isEditing,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    if (_isEditing)
-                      PrimaryButton(
-                        text: _isSaving
-                            ? 'Sauvegarde...'
-                            : 'Sauvegarder',
-                        onPressed:
-                            _isSaving ? null : _saveProfile,
+                  Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Payment Method",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold)),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _showCardForm =
+                                !_showCardForm;
+                          });
+                        },
+                        child: Text(
+                            _showCardForm ? "Cancel" : "Edit"),
                       ),
-                  ],
-                ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  if (cardNumber.isNotEmpty)
+                    buildAnimatedCard(cardNumber, expiry),
+
+                  const SizedBox(height: 15),
+
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    child: _showCardForm
+                        ? Column(
+                            children: [
+
+                              TextField(
+                                controller:
+                                    _cardNumberCtrl,
+                              ),
+
+                              TextField(
+                                controller:
+                                    _cardExpiryCtrl,
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              ElevatedButton(
+                                onPressed: _saveCard,
+                                child: const Text("Save Card"),
+                              ),
+                            ],
+                          )
+                        : const SizedBox(),
+                  ),
+                ],
               ),
             ),
 
             const Divider(),
 
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout,
-                    color: Colors.red),
-                label: const Text(
-                  'Se déconnecter',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
+            OutlinedButton(
+              onPressed: _logout,
+              child: const Text("Logout"),
             ),
           ],
         ),
