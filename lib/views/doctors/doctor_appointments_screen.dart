@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_doctor_consultation_screen.dart';
+
 
 class DoctorAppointmentsScreen extends StatelessWidget {
   const DoctorAppointmentsScreen({super.key});
@@ -100,19 +102,36 @@ class DoctorAppointmentsScreen extends StatelessWidget {
                     children: [
                       // ▶ START CONSULTATION
                       IconButton(
-                        icon: const Icon(Icons.play_arrow,
-                            color: Colors.blue),
-                        onPressed: status == 'confirmed'
-                            ? () async {
-                                await firestore
-                                    .collection('appointments')
-                                    .doc(doc.id)
-                                    .update({
-                                  'status': 'in_consultation',
-                                });
-                              }
-                            : null,
-                      ),
+  icon: const Icon(Icons.play_arrow, color: Colors.blue),
+  onPressed: status == 'confirmed'
+      ? () async {
+
+          // ✅ update status
+          await firestore
+              .collection('appointments')
+              .doc(doc.id)
+              .update({
+            'status': 'in_consultation',
+          });
+
+          // ✅ OPEN CONSULTATION SCREEN WITH CORRECT DATA
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FirebaseDoctorConsultationScreen(
+                appointment: {
+                  ...data,
+
+                  // ✅ IMPORTANT FIXES
+                  'id': doc.id,
+                  'patientId': data['userId'], // 🔥 THIS FIXES YOUR ERROR
+                },
+              ),
+            ),
+          );
+        }
+      : null,
+),
 
                       // ✅ FINISH CONSULTATION
                       IconButton(

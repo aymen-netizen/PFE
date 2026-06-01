@@ -46,9 +46,9 @@ class HomeContent extends StatelessWidget {
         SafeArea(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('appointments')
-                .where('patientId', isEqualTo: user?.uid)
-                .snapshots(),
+    .collection('appointments')
+    .where('userId', isEqualTo: user?.uid)
+    .snapshots(),
 
             builder: (context, snapshot) {
 

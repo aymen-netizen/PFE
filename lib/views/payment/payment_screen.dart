@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'payment_success_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class PaymentScreen extends StatelessWidget {
-
+class PaymentScreen extends StatefulWidget {
   final String doctorId;
   final String doctorName;
   final String specialty;
@@ -21,191 +21,201 @@ class PaymentScreen extends StatelessWidget {
     required this.symptoms,
   });
 
+  @override
+  State<PaymentScreen> createState() => _PaymentScreenState();
+}
+
+class _PaymentScreenState extends State<PaymentScreen> {
+
+  String cardNumber = "";
+  String expiry = "";
+  bool isRedirecting = false;  // IMPORTANT
+
+  @override
+  void initState() {
+    super.initState();
+    loadCard();
+  }
+
+  Future<void> loadCard() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final data = doc.data();
+
+    if (data != null) {
+      final number = data['cardNumber'] ?? "";
+      final exp = data['cardExpiry'] ?? "";
+
+      // ✅ REDIRECT IF NO CARD
+      if (number.isEmpty && !isRedirecting) {
+        isRedirecting = true;
+
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("⚠️ Please add a card first"),
+            ),
+          );
+
+          Navigator.pushNamed(context, '/profile').then((_) {
+            isRedirecting = false;
+            loadCard(); // ✅ reload after return
+          });
+        });
+
+        return;
+      }
+
+      // ✅ LOAD CARD
+      setState(() {
+        cardNumber = number;
+        expiry = exp;
+      });
+    }
+  }
+
   String maskCard(String number) {
-    if (number.length < 4) return "****";
+    if (number.length < 4) return "**** **** **** ****";
     return "**** **** **** ${number.substring(number.length - 4)}";
+  }
+
+  Future<void> _pay() async {
+    final currentUser = FirebaseAuth.instance.currentUser!;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('appointments')
+        .add({
+      'doctorId': widget.doctorId,
+      'doctorName': widget.doctorName,
+      'specialty': widget.specialty,
+      'date': widget.selectedDate,
+      'time': widget.selectedTime,
+      'symptoms': widget.symptoms,
+      'price': 50,
+      'userId': currentUser.uid,
+      'status': 'pending',
+      'paymentMethod': "Card",
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await FirebaseFirestore.instance
+        .collection('patients')
+        .doc(currentUser.uid)
+        .collection('dossier')
+        .add({
+      'appointmentId': doc.id,
+      'doctorName': widget.doctorName,
+      'date': widget.selectedDate,
+      'medications': [],
+      'analyses': [],
+      'recommendations': [],
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    final qrData = {
+      "id": doc.id,
+      "doctor": widget.doctorName,
+      "date": widget.selectedDate,
+      "time": widget.selectedTime
+    };
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentSuccessScreen(
+          appointmentId: doc.id,
+          qrData: qrData,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
 
-    final user = FirebaseAuth.instance.currentUser!;
-
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(title: const Text("Payment")),
 
-      body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get(),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
 
-        builder: (context, snapshot) {
+            // ✅ CARD UI
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4A5FC1), Color(0xFF6A82FB)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: const EdgeInsets.all(20),
 
-          if (!snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          final data =
-              snapshot.data!.data() as Map<String, dynamic>;
-
-          final cardNumber = data['cardNumber'] ?? '';
-          final expiry = data['cardExpiry'] ?? '';
-
-          // ✅ NO CARD
-          if (cardNumber.isEmpty) {
-            return Center(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("No card found"),
+
+                  const Text("MASTER CARD",
+                      style: TextStyle(color: Colors.white70)),
+
+                  const Spacer(),
+
+                  Text(
+                    maskCard(cardNumber),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      letterSpacing: 2,
+                    ),
+                  ),
+
                   const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Add card in profile"),
+
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Text(
+                      expiry,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
                   ),
                 ],
               ),
-            );
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(20),
-
-            child: Column(
-              children: [
-
-                const SizedBox(height: 40),
-
-                const Icon(
-                  Icons.credit_card,
-                  size: 80,
-                  color: Colors.green,
-                ),
-
-                const SizedBox(height: 20),
-
-                const Text(
-                  "Consultation Fee",
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 10),
-
-                const Text(
-                  "50 DT",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                // ✅ CARD UI
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius:
-                        BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        maskCard(cardNumber),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        "VALID THRU $expiry",
-                        style: const TextStyle(
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                // ✅ ✅ FINAL PAY BUTTON (ONLY SAVE HERE)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14),
-                    ),
-
-                    onPressed: () async {
-
-                      // ✅ LOADING
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => const Center(
-                          child:
-                              CircularProgressIndicator(),
-                        ),
-                      );
-
-                      await Future.delayed(
-                          const Duration(seconds: 2));
-
-                      // ✅ SAVE TO FIREBASE (ONLY HERE)
-                      await FirebaseFirestore.instance
-                          .collection('appointments')
-                          .add({
-                        "doctorId": doctorId,
-                        "doctorName": doctorName,
-                        "specialty": specialty.toLowerCase(),
-                        "patientId": user.uid,
-                        "patientName": user.email,
-                        "date": selectedDate,
-                        "time": selectedTime,
-                        "symptoms": symptoms,
-                        "status": "pending",
-                      });
-
-                      Navigator.pop(context);
-
-                      // ✅ SUCCESS
-                      ScaffoldMessenger.of(context)
-                          .showSnackBar(
-                        const SnackBar(
-                          content:
-                              Text("RDV confirmé ✅"),
-                        ),
-                      );
-
-                      Navigator.popUntil(
-                          context,
-                          (route) => route.isFirst);
-                    },
-
-                    child: const Text("Pay Now"),
-                  ),
-                ),
-              ],
             ),
-          );
-        },
+
+            const SizedBox(height: 10),
+
+            // ✅ WARNING MESSAGE
+            if (cardNumber.isEmpty)
+              const Center(
+                child: Text(
+                  "⚠️ Add a card in Profile first",
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // ✅ PAY BUTTON
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: cardNumber.isEmpty ? null : _pay,
+                child: const Text("Pay Now"),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

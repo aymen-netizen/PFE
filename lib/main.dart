@@ -5,10 +5,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_Theme.dart';
 import 'views/splash/splash_screen.dart';
 import 'views/auth/login_screen.dart';
+import 'views/profile/profile_screen.dart'; // ADD THIS
 import 'firebase_options.dart';
 
-// ✅ OPTIONAL (TEMP: for seeding doctors)
-import 'utils/seed_doctors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,8 +16,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // ✅ RUN ONCE TO ADD DOCTORS (THEN REMOVE)
-  // await seedDoctors();  // ⚠️ uncomment → run once → remove
+  // await seedDoctors(); // run once then remove
 
   runApp(
     const ProviderScope(
@@ -37,11 +35,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.LightTheme(),
 
-      // ✅ ROUTES (READY FOR PHASE 3)
+      // ✅ ROUTES
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/profile': (context) => const ProfileScreen(),  // VERY IMPORTANT
 
-        // ✅ future (you will use these next)
+        // (optional future routes)
         // '/doctor': (context) => const DoctorDashboardScreen(),
         // '/assistant': (context) => const AssistantDashboardScreen(),
         // '/home': (context) => const PatientHomeScreen(),

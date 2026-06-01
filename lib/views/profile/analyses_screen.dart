@@ -8,32 +8,25 @@ class AnalysesScreen extends StatefulWidget {
   const AnalysesScreen({super.key});
 
   @override
- State<AnalysesScreen> createState() => _AnalysesScreenState();
+  State<AnalysesScreen> createState() => _AnalysesScreenState();
 }
 
 class _AnalysesScreenState extends State<AnalysesScreen> {
 
   final ImagePicker _picker = ImagePicker();
 
-  // ✅ FIX: use late + initState (prevents NULL crash)
+  Map<String, Uint8List> selectedImages = {};
 
-Map<String, Uint8List> selectedImages = {};
-
-
-
-  // ✅ PICK IMAGE
   Future<Uint8List?> pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return null;
     return await picked.readAsBytes();
   }
 
-  // ✅ UNIQUE KEY
   String getKey(String docId, String analysis) {
     return "${docId}_$analysis";
   }
 
-  // ✅ PREVIEW
   void showPreview(BuildContext context, String title, Uint8List bytes) {
     showDialog(
       context: context,
@@ -66,7 +59,6 @@ Map<String, Uint8List> selectedImages = {};
         title: const Text("Analyses"),
         backgroundColor: Colors.green,
       ),
-
       backgroundColor: const Color(0xFFF3F5F9),
 
       body: StreamBuilder<QuerySnapshot>(
@@ -83,7 +75,12 @@ Map<String, Uint8List> selectedImages = {};
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data!.docs;
+          // ✅ FILTER ONLY DOSSIERS THAT HAVE ANALYSES
+          final docs = snapshot.data!.docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final analyses = data['analyses'];
+            return analyses != null && (analyses as List).isNotEmpty;
+          }).toList();
 
           if (docs.isEmpty) {
             return const Center(child: Text("No analyses found"));
@@ -98,8 +95,7 @@ Map<String, Uint8List> selectedImages = {};
               final doc = docs[index];
               final data = doc.data() as Map<String, dynamic>;
 
-              final analyses =
-                  List<String>.from(data['analyses'] ?? []);
+              final analyses = List<String>.from(data['analyses']);
 
               final docId = doc.id;
 
@@ -149,15 +145,12 @@ Map<String, Uint8List> selectedImages = {};
                       children: analyses.map((a) {
 
                         final key = getKey(docId, a);
-
-                        // ✅ SAFE ACCESS (NO containsKey)
                         final image = selectedImages[key];
 
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
 
-                            // ✅ CHIP
                             Chip(
                               label: Text(a),
                               backgroundColor: Colors.blue.shade50,
@@ -165,7 +158,6 @@ Map<String, Uint8List> selectedImages = {};
 
                             const SizedBox(height: 6),
 
-                            // ✅ BUTTON / ACTIONS
                             image == null
                                 ? ElevatedButton(
                                     onPressed: () async {
@@ -180,12 +172,10 @@ Map<String, Uint8List> selectedImages = {};
                                     },
                                     child: const Text("Add Image"),
                                   )
-
                                 : Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
 
-                                      // ✅ VIEW
                                       IconButton(
                                         icon: const Icon(
                                           Icons.visibility,
@@ -195,7 +185,6 @@ Map<String, Uint8List> selectedImages = {};
                                             showPreview(context, a, image),
                                       ),
 
-                                      // ✅ DELETE
                                       IconButton(
                                         icon: const Icon(
                                           Icons.delete,
@@ -210,7 +199,6 @@ Map<String, Uint8List> selectedImages = {};
                                     ],
                                   ),
 
-                            // ✅ IMAGE PREVIEW
                             if (image != null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 5),

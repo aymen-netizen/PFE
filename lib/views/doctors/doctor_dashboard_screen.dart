@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firebase_appointment_service.dart';
 import 'firebase_doctor_consultation_screen.dart';
 import 'doctor_schedule_screen.dart'; // ✅ ADD THIS
+import '../qr/qr_scan_screen.dart';
 
 class DoctorDashboardScreen extends StatelessWidget {
   const DoctorDashboardScreen({super.key});
@@ -265,38 +266,51 @@ class DoctorDashboardScreen extends StatelessWidget {
           // ✅ ✅ ✅ FIXED HERE
           actions: [
 
-            // 🔥 SCHEDULE BUTTON
-            IconButton(
-              icon: const Icon(Icons.schedule),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const DoctorScheduleScreen(),
-                  ),
-                );
-              },
-            ),
+  // ✅ ✅ QR SCANNER BUTTON
+  IconButton(
+    icon: const Icon(Icons.qr_code_scanner),
+    tooltip: "Scan QR",
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const QRScanScreen(),
+        ),
+      );
+    },
+  ),
 
-            IconButton(
-              icon:
-                  const Icon(Icons.logout),
-              onPressed: () async {
-                await FirebaseAuth.instance
-                    .signOut();
+  // ✅ SCHEDULE BUTTON
+  IconButton(
+    icon: const Icon(Icons.schedule),
+    tooltip: "Schedule",
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DoctorScheduleScreen(),
+        ),
+      );
+    },
+  ),
 
-                if (context.mounted) {
-                  Navigator
-                      .pushNamedAndRemoveUntil(
-                    context,
-                    '/login',
-                    (route) => false,
-                  );
-                }
-              },
-            ),
-          ],
+  // ✅ LOGOUT BUTTON
+  IconButton(
+    icon: const Icon(Icons.logout),
+    tooltip: "Logout",
+    onPressed: () async {
+      await FirebaseAuth.instance.signOut();
+
+      if (context.mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (route) => false,
+        );
+      }
+    },
+  ),
+],
         ),
 
         body: Column(

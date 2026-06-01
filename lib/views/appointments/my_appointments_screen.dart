@@ -33,7 +33,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
 
   return FirebaseFirestore.instance
       .collection('appointments')
-      .where('patientId', isEqualTo: user!.uid)
+      .where('userId', isEqualTo: user!.uid) // ✅ FIX HERE
       .snapshots();
 }
 

@@ -78,18 +78,19 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
     final symptomsText = _buildSymptomsText();
 
     Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PaymentScreen(
-          doctorId: widget.doctorId,
-          doctorName: widget.doctorName,   // ✅ IMPORTANT
-          specialty: widget.specialty,
-          selectedDate: widget.selectedDate,
-          selectedTime: widget.selectedTime, // ✅ IMPORTANT
-          symptoms: symptomsText,
-        ),
-      ),
-    );
+  context,
+  MaterialPageRoute(
+    builder: (_) => PaymentScreen(
+      doctorId: widget.doctorId,
+      doctorName: widget.doctorName,
+      specialty: widget.specialty,
+      selectedDate: widget.selectedDate,
+      selectedTime: widget.selectedTime,
+      symptoms: symptomsText,
+    ),
+  ),
+);
+
   }
 
   @override

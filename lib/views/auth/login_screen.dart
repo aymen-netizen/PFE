@@ -2,12 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../core/utils/Validators.dart';
-import '../../../core/constants/app_String.dart';
-import '../../../core/constants/app_Color.dart';
-import '../../../widget/input/customertextfield.dart';
-import '../../../widget/buttons/primary_button.dart';
-
 import 'signup_screen.dart';
 import 'forget_password_screen.dart';
 import '../admin/admin_dashboard_screen.dart';
@@ -24,17 +18,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  /// ✅ eye toggle
+  bool _obscurePassword = true;
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -42,17 +33,14 @@ class _LoginState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
-
-      final credential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      final credential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
       final user = credential.user;
-      if (user == null) throw Exception("Login failed");
+      if (user == null) throw Exception();
 
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -61,116 +49,240 @@ class _LoginState extends State<LoginScreen> {
 
       final role = doc.data()?['role'] ?? 'patient';
 
-      Widget nextScreen;
+      Widget next;
 
       switch (role) {
         case 'admin':
-          nextScreen = const AdminDashboardScreen();
+          next = const AdminDashboardScreen();
           break;
         case 'assistant':
-          nextScreen = const AssistantDashboardScreen();
+          next = const AssistantDashboardScreen();
           break;
         case 'doctor':
-          nextScreen = const DoctorDashboardScreen();
+          next = const DoctorDashboardScreen();
           break;
         default:
-          nextScreen = const MainNavigationScreen();
+          next = const MainNavigationScreen();
       }
 
       if (!mounted) return;
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => nextScreen),
+        MaterialPageRoute(builder: (_) => next),
         (route) => false,
       );
-
-    } on FirebaseAuthException catch (e) {
+    } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Login failed")),
+        const SnackBar(content: Text("Login failed")),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
+
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+      body: Container(
+        /// ✅ Elegant gradient background
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF4F6F8), Color(0xFFE8F5E9)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
 
-          child: Form(
-            key: _formKey,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+
             child: Column(
               children: [
-
+                /// ✅ LOGO
                 Container(
-                  width: 120,
-                  height: 120,
+                  padding: const EdgeInsets.all(25),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryColor.withOpacity(0.1),
+                    color: Colors.green.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.local_hospital,
-                    size: 80,
-                    color: AppColors.primaryColor,
+                    size: 60,
+                    color: Colors.green,
                   ),
-                ),
-
-                const SizedBox(height: 40),
-
-                Customertextfield(
-                  hintText: AppString.email,
-                  controller: _emailController,
-                  isPassword: false,
-                  validator: validators.validateEmail,
-                ),
-
-                const SizedBox(height: 20),
-
-                Customertextfield(
-                  hintText: AppString.password,
-                  controller: _passwordController,
-                  isPassword: true,
-                  validator: validators.validatePassword,
-                ),
-
-                const SizedBox(height: 10),
-
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ForgetPasswordScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text("Forgot Password?"),
                 ),
 
                 const SizedBox(height: 30),
 
-                PrimaryButton(
-                  text: _isLoading ? 'Loading...' : 'Login',
-                  onPressed: _isLoading ? null : _login,
-                ),
-
-                const SizedBox(height: 20),
-
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SignupScreen(),
+                /// ✅ CARD
+                Container(
+                  padding: const EdgeInsets.all(25),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                    );
-                  },
-                  child: const Text("Create Account"),
+                    ],
+                  ),
+
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        const Text(
+                          "Welcome Back",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 25),
+
+                        /// ✅ EMAIL
+                        TextFormField(
+  controller: _emailController,
+  decoration: InputDecoration(
+    hintText: "Email",
+    prefixIcon: const Icon(Icons.email_outlined),
+    filled: true,
+    fillColor: Colors.grey.shade100,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(15),
+      borderSide: BorderSide.none,
+    ),
+  ),
+  validator: (value) {
+    if (value == null || value.isEmpty) {
+      return "Email required";
+    }
+    if (!value.contains('@')) {
+      return "Invalid email";
+    }
+    return null;
+  },
+),
+
+                        const SizedBox(height: 15),
+
+                        /// ✅ PASSWORD WITH WORKING EYE
+                        TextFormField(
+  controller: _passwordController,
+  obscureText: _obscurePassword,
+  decoration: InputDecoration(
+    hintText: "Password",
+    prefixIcon: const Icon(Icons.lock_outline),
+    filled: true,
+    fillColor: Colors.grey.shade100,
+
+    /// ✅ WORKING EYE
+    suffixIcon: IconButton(
+      icon: Icon(
+        _obscurePassword
+            ? Icons.visibility_off
+            : Icons.visibility,
+      ),
+      onPressed: () {
+        setState(() {
+          _obscurePassword = !_obscurePassword;
+        });
+      },
+    ),
+
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(15),
+      borderSide: BorderSide.none,
+    ),
+  ),
+  validator: (value) {
+    if (value == null || value.isEmpty) {
+      return "Password required";
+    }
+    if (value.length < 6) {
+      return "Too short";
+    }
+    return null;
+  },
+),
+
+
+                        const SizedBox(height: 10),
+
+                        /// ✅ FORGOT PASSWORD
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ForgetPasswordScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              "Forgot Password?",
+                              style: TextStyle(
+                                  color: Colors.green),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        /// ✅ LOGIN BUTTON
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed:
+                                _isLoading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+  backgroundColor: Colors.green.shade600,
+  elevation: 2,
+  shadowColor: Colors.greenAccent,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(14),
+  ),
+),
+                            child: Text(
+                              _isLoading
+                                  ? "Loading..."
+                                  : "Login",
+                              style:
+                                  const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        /// ✅ CREATE ACCOUNT
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const SignupScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "Create Account",
+                            style: TextStyle(
+                                color: Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

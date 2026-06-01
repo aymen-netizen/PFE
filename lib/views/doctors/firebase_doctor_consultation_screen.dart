@@ -63,25 +63,53 @@ class _FirebaseDoctorConsultationScreenState
   }
 
   Future<void> _confirmConsultation() async {
-    final db = FirebaseFirestore.instance;
-    final appointmentId = widget.appointment['id'];
-    final patientId = widget.appointment['patientId'];
+  final db = FirebaseFirestore.instance;
+  
 
-    if (appointmentId == null || patientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Missing data'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  final appointmentId = widget.appointment['id'];
+  final patientId = widget.appointment['userId'];
 
-    setState(() => _loading = true);
+  if (appointmentId == null || patientId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Missing data'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
 
-    try {
-      // ✅ UPDATE APPOINTMENT
-      await db.collection('appointments').doc(appointmentId).update({
+  setState(() => _loading = true);
+
+  try {
+    // ✅ 1. UPDATE APPOINTMENT
+    await db.collection('appointments').doc(appointmentId).update({
+      'diagnosis': _diagnosisController.text,
+      'doctorNotes': _doctorNotesController.text,
+      'medications': _selectedMedications,
+      'analyses': _selectedAnalyses,
+      'recommendations': _selectedRecommendations,
+      'status': 'completed',
+    });
+
+    // ✅ 2. FIND EXISTING DOSSIER (LINKED TO THIS APPOINTMENT)
+    final dossierQuery = await db
+        .collection('patients')
+        .doc(patientId)
+        .collection('dossier')
+        .where('appointmentId', isEqualTo: appointmentId)
+        .get();
+
+    // ✅ 3. UPDATE DOSSIER (NOT ADD NEW)
+    if (dossierQuery.docs.isNotEmpty) {
+      final dossierId = dossierQuery.docs.first.id;
+
+      await db
+          .collection('patients')
+          .doc(patientId)
+          .collection('dossier')
+          .doc(dossierId)
+          .update({
         'diagnosis': _diagnosisController.text,
         'doctorNotes': _doctorNotesController.text,
         'medications': _selectedMedications,
@@ -89,62 +117,50 @@ class _FirebaseDoctorConsultationScreenState
         'recommendations': _selectedRecommendations,
         'status': 'completed',
       });
-
-      // ✅ SAVE TO DOSSIER
+    } else {
+      // ✅ safety (if dossier not created before)
       await db
           .collection('patients')
           .doc(patientId)
           .collection('dossier')
           .add({
+        'appointmentId': appointmentId,
+        'doctorName': widget.appointment['doctorName'],
+        'date': widget.appointment['date'],
+        'time': widget.appointment['time'],
         'diagnosis': _diagnosisController.text,
         'doctorNotes': _doctorNotesController.text,
         'medications': _selectedMedications,
         'analyses': _selectedAnalyses,
         'recommendations': _selectedRecommendations,
-        'doctorName': widget.appointment['doctorName'],
-        'date': widget.appointment['date'],
-        'time': widget.appointment['time'],
+        'status': 'completed',
         'createdAt': FieldValue.serverTimestamp(),
       });
-
-      // ✅ SAVE ANALYSES
-      for (var analysis in _selectedAnalyses) {
-        await db
-            .collection('patients')
-            .doc(patientId)
-            .collection('analyses')
-            .add({
-          'name': analysis,
-          'status': 'pending',
-          'doctorName': widget.appointment['doctorName'],
-          'date': widget.appointment['date'],
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Consultation saved ✅'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Consultation saved ✅'),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    Navigator.pop(context);
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    if (mounted) setState(() => _loading = false);
   }
+}
 
   Widget _sectionTitle(String title) {
     return Padding(
