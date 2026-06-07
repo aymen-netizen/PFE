@@ -5,9 +5,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_Theme.dart';
 import 'views/splash/splash_screen.dart';
 import 'views/auth/login_screen.dart';
-import 'views/profile/profile_screen.dart'; // ADD THIS
-import 'firebase_options.dart';
+import 'views/profile/profile_screen.dart';
 
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +15,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  // await seedDoctors(); // run once then remove
 
   runApp(
     const ProviderScope(
@@ -35,17 +33,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.LightTheme(),
 
-      // ✅ ROUTES
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/profile': (context) => const ProfileScreen(),  // VERY IMPORTANT
-
-        // (optional future routes)
-        // '/doctor': (context) => const DoctorDashboardScreen(),
-        // '/assistant': (context) => const AssistantDashboardScreen(),
-        // '/home': (context) => const PatientHomeScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
 
+      // ✅ back to normal app flow
       home: const SplashScreen(),
     );
   }

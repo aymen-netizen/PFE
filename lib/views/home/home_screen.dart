@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// ✅ IMPORT SCREENS
+// SCREENS
 import '../appointments/my_appointments_screen.dart';
 import '../profile/dossier_screen.dart';
 import '../profile/analyses_screen.dart';
 import '../doctors/doctor_list_screen.dart';
-import '../chat/chatbot_screen.dart'; // ✅ NEW
+import '../chat/chatbot_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -25,20 +25,23 @@ class HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     final user = FirebaseAuth.instance.currentUser;
 
     return Stack(
       children: [
+
+        /// ✅ HEADER GRADIENT
         Container(
           height: 260,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF1C8C8C), Color(0xFF2FA0A0)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
+              bottomLeft: Radius.circular(35),
+              bottomRight: Radius.circular(35),
             ),
           ),
         ),
@@ -46,9 +49,9 @@ class HomeContent extends StatelessWidget {
         SafeArea(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-    .collection('appointments')
-    .where('userId', isEqualTo: user?.uid)
-    .snapshots(),
+                .collection('appointments')
+                .where('userId', isEqualTo: user?.uid)
+                .snapshots(),
 
             builder: (context, snapshot) {
 
@@ -58,7 +61,6 @@ class HomeContent extends StatelessWidget {
 
               final appointments = snapshot.data!.docs;
 
-              // ✅ COUNTS
               int rdvCount = appointments.length;
               int dossierCount = appointments.length;
 
@@ -73,143 +75,103 @@ class HomeContent extends StatelessWidget {
               }
 
               return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
+                    /// ✅ HEADER TEXT
                     const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: EdgeInsets.symmetric(horizontal: 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Plateforme Santé",
+                          Text("TBIBI",
                               style: TextStyle(color: Colors.white70)),
-                          SizedBox(height: 8),
+
+                          SizedBox(height: 6),
+
                           Text(
-                            "Bonjour 👋",
+                            "Hello 👋",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+
                           Text(
-                            "Prenez soin de votre santé",
+                            "Take good care of your health.",
                             style: TextStyle(color: Colors.white70),
                           ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 25),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: const TextField(
-                          decoration: InputDecoration(
-                            hintText: "Rechercher...",
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.all(18),
-                            prefixIcon: Icon(Icons.search),
-                          ),
+                    /// ✅ SEARCH BAR
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                          )
+                        ],
+                      ),
+                      child: const TextField(
+                        decoration: InputDecoration(
+                          hintText: "Search...",
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(18),
+                          prefixIcon: Icon(Icons.search),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 30),
 
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
+                    /// ✅ SECTION TITLE
+                    const Text(
+                      "Your Activity",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                    ),
 
-                          const Text(
-                            "Votre activité",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
+                    const SizedBox(height: 15),
 
-                          const SizedBox(height: 15),
+                    /// ✅ GRID (PRO LOOK)
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 15,
+                      mainAxisSpacing: 15,
+                      childAspectRatio: 1.3,
 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+                      children: [
 
-                              _infoCard(context, "RDV",
-                                  "$rdvCount", Icons.calendar_today, () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const MyAppointmentsScreen()),
-                                );
-                              }),
+                        _card(context, "RDV", "$rdvCount", Icons.calendar_today,
+                            const MyAppointmentsScreen()),
 
-                              _infoCard(context, "Dossier",
-                                  "$dossierCount", Icons.folder, () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const DossierScreen()),
-                                );
-                              }),
+                        _card(context, "Medical Record", "$dossierCount",
+                            Icons.folder, const DossierScreen()),
 
-                              _infoCard(context, "Analyses",
-                                  "$analysesCount", Icons.science, () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const AnalysesScreen()),
-                                );
-                              }),
+                        _card(context, "Medical Tests", "$analysesCount",
+                            Icons.science, const AnalysesScreen()),
 
-                              _infoCard(context, "Médecins",
-                                  "", Icons.person, () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const DoctorListScreen()),
-                                );
-                              }),
-                            ],
-                          ),
+                        _card(context, "Doctors", "", Icons.person,
+                            const DoctorListScreen()),
 
-                          const SizedBox(height: 15),
-
-                          // ✅ ✅ NEW ROW (CHATBOT)
-                          Row(
-                            children: [
-
-                              _infoCard(context, "Chatbot",
-                                  "", Icons.smart_toy, () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ChatbotScreen()),
-                                );
-                              }),
-
-                            ],
-                          ),
-
-                        ],
-                      ),
+                        _card(context, "Chatbot", "", Icons.smart_toy,
+                            const ChatbotScreen()),
+                      ],
                     ),
                   ],
                 ),
@@ -221,34 +183,82 @@ class HomeContent extends StatelessWidget {
     );
   }
 
-  static Widget _infoCard(
+  /// ✅ ✅ CARD WITH ANIMATION + TRANSITION
+  static Widget _card(
     BuildContext context,
     String title,
     String value,
     IconData icon,
-    VoidCallback onTap,
+    Widget screen,
   ) {
-    return GestureDetector(
-      onTap: onTap,
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+
+      onTap: () {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 400),
+
+            pageBuilder: (_, __, ___) => screen,
+
+            transitionsBuilder: (_, animation, __, child) {
+              return SlideTransition(
+                position: Tween(
+                  begin: const Offset(0.2, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+          ),
+        );
+      },
+
       child: Container(
-        width: 80,
-        padding: const EdgeInsets.symmetric(vertical: 15),
+        padding: const EdgeInsets.all(12),
+
         decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(15),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
+
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: const Color(0xFF1C8C8C)),
-            const SizedBox(height: 8),
+
+Icon(icon, size: 25, color: const Color(0xFF1C8C8C)),
+
+            const SizedBox(height: 6),
+
             if (value.isNotEmpty)
               Text(
                 value,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+
+            const SizedBox(height: 5),
+
             Text(
               title,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 13,
+              ),
             ),
           ],
         ),

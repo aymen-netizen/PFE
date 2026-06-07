@@ -9,6 +9,7 @@ class AssistantChatDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     final assistant = FirebaseAuth.instance.currentUser!;
 
     return Scaffold(
@@ -16,188 +17,101 @@ class AssistantChatDashboard extends StatelessWidget {
         backgroundColor: Colors.green,
         title: const Text(
           "Conversations",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white),
         ),
       ),
 
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('chats')
-            .where('assistantId', isEqualTo: assistant.uid)
-            .snapshots(),
+  stream: FirebaseFirestore.instance
+      .collection('conversations')
+      .where(
+        'participants',
+        arrayContains: assistant.uid,
+      )
+      .snapshots(),
 
-        builder: (context, snapshot) {
+  builder: (context, snapshot) {
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No conversations"));
-          }
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return const Center(child: Text("No conversations"));
+    }
 
-          final chats = snapshot.data!.docs;
+    final conversations = snapshot.data!.docs.toList()
+      ..sort((a, b) {
+        final aData = a.data() as Map<String, dynamic>;
+        final bData = b.data() as Map<String, dynamic>;
 
-          // ✅ sort manually
-          chats.sort((a, b) {
-            final aTime = a['updatedAt'] ?? Timestamp(0, 0);
-            final bTime = b['updatedAt'] ?? Timestamp(0, 0);
-            return (bTime as Timestamp).compareTo(aTime as Timestamp);
-          });
+        final aTime = aData['lastTime'] as Timestamp?;
+        final bTime = bData['lastTime'] as Timestamp?;
 
-          return ListView.builder(
-            itemCount: chats.length,
+        if (aTime == null || bTime == null) return 0;
+        return bTime.compareTo(aTime);
+      });
 
-            itemBuilder: (context, index) {
+    return ListView.builder(
+      itemCount: conversations.length,
 
-              final data =
-                  chats[index].data() as Map<String, dynamic>;
+      itemBuilder: (context, index) {
 
-              final participants =
-                  List<String>.from(data['participants']);
+        final doc = conversations[index];
+        final data = doc.data() as Map<String, dynamic>;
 
-              final patientId =
-                  participants.firstWhere((id) => id != assistant.uid);
+        final participants =
+            List<String>.from(data['participants'] ?? []);
 
-              // ✅ show real patient name
-              final patientName =
-                  data['patientName'] ?? "Patient";
+        final otherUserId =
+            participants.firstWhere((id) => id != assistant.uid);
 
-              // ✅ format time
-              String time = "";
-              if (data['updatedAt'] != null) {
-                final dt =
-                    (data['updatedAt'] as Timestamp).toDate();
-                time = DateFormat('HH:mm').format(dt);
-              }
+        String time = "";
+        if (data['lastTime'] != null) {
+          final dt =
+              (data['lastTime'] as Timestamp).toDate();
+          time = DateFormat('HH:mm').format(dt);
+        }
 
-              return InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AssistantChatScreen(
-                        patientId: patientId,
-                      ),
-                    ),
-                  );
-                },
+        return ListTile(
+          leading: const CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.green,
+            child: Icon(Icons.person, color: Colors.white),
+          ),
 
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 12),
+          title: Text(
+            data['assistantName'] ?? "Patient",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
 
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Colors.grey.shade300,
-                      ),
-                    ),
-                  ),
+          subtitle: Text(
+            data['lastMessage'] ?? "",
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
 
-                  child: Row(
-                    children: [
+          trailing: Text(
+            time,
+            style: const TextStyle(fontSize: 12),
+          ),
 
-                      // ✅ avatar
-                      const CircleAvatar(
-                        radius: 26,
-                        backgroundColor: Colors.green,
-                        child: Icon(Icons.person,
-                            color: Colors.white),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-
-                            // ✅ name + time
-                            Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                              children: [
-
-                                Text(
-                                  patientName, // 🔥 REAL NAME
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-
-                                Text(
-                                  time,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 4),
-
-                            // ✅ last message + unread
-                            Row(
-                              children: [
-
-                                Expanded(
-                                  child: Text(
-                                    data['lastMessage'] ?? "",
-                                    maxLines: 1,
-                                    overflow:
-                                        TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                ),
-
-                                if ((data['unread'] ?? 0) > 0)
-                                  Container(
-                                    margin:
-                                        const EdgeInsets.only(left: 6),
-                                    padding:
-                                        const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 3,
-                                    ),
-                                    decoration:
-                                        const BoxDecoration(
-                                      color: Colors.green,
-                                      borderRadius:
-                                          BorderRadius.all(
-                                        Radius.circular(12),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      data['unread'].toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AssistantChatScreen(
+                  patientId: otherUserId,
+                  chatId: doc.id,
                 ),
-              );
-            },
-          );
-        },
-      ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  },
+)
     );
   }
 }

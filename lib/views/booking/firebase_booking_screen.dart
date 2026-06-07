@@ -29,6 +29,17 @@ class _FirebaseBookingScreenState
 
     final doctorId = widget.doctor['uid'];
 
+    // ✅ ✅ IMAGE CLEANING (OUTSIDE UI)
+    final raw = widget.doctor['image'] ?? "";
+
+    final cleaned = raw
+        .toString()
+        .trim()
+        .replaceAll(RegExp(r'\s+'), '')
+        .replaceAll('assets/', '');
+
+    final imagePath = 'assets/$cleaned';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
 
@@ -56,62 +67,106 @@ class _FirebaseBookingScreenState
 
                   /// ✅ HEADER
                   Container(
-                    height: 320,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF0F7B8E),
-                          Color(0xFF14919B),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(40),
-                        bottomRight: Radius.circular(40),
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
+  height: 340,
+  decoration: const BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        Color(0xFF0F7B8E),
+        Color(0xFF14919B),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    borderRadius: BorderRadius.only(
+      bottomLeft: Radius.circular(40),
+      bottomRight: Radius.circular(40),
+    ),
+  ),
 
-                        Positioned(
-                          left: 20,
-                          top: 20,
-                          child: CircleAvatar(
-                            backgroundColor:
-                                Colors.white.withOpacity(0.2),
-                            child: IconButton(
-                              icon: const Icon(Icons.arrow_back,
-                                  color: Colors.white),
-                              onPressed: () =>
-                                  Navigator.pop(context),
-                            ),
-                          ),
-                        ),
+  child: Stack(
+    children: [
 
-                        Center(
-                          child: CircleAvatar(
-                            radius: 80,
-                            backgroundImage: const AssetImage(
-                                "assets/cardiologue/cardiologue1.jpg"),
-                          ),
-                        ),
+      /// 🔙 BACK BUTTON
+      Positioned(
+        left: 20,
+        top: 20,
+        child: CircleAvatar(
+          backgroundColor: Colors.white.withOpacity(0.2),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+      ),
 
-                        Positioned(
-                          bottom: 25,
-                          left: 25,
-                          child: Text(
-                            widget.doctor['name'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+      /// 👤 DOCTOR IMAGE
+      Positioned.fill(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
 
-                  const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 15,
+                  )
+                ],
+              ),
+              child: CircleAvatar(
+                radius: 60,
+                backgroundImage: AssetImage(imagePath),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            /// ✅ NAME
+            Text(
+              widget.doctor['name'],
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            /// ✅ SPECIALTY
+            Text(
+              widget.doctor['specialty'],
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            /// ⭐ RATING
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.star, color: Colors.amber, size: 18),
+                SizedBox(width: 4),
+                Text(
+                  "4.8",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ],
+  ),
+),
+
+                  const SizedBox(height: 25),
 
                   /// ✅ CONTENT
                   Padding(
@@ -122,7 +177,7 @@ class _FirebaseBookingScreenState
                           CrossAxisAlignment.start,
                       children: [
 
-                        /// ✅ DATE
+                        /// DATE
                         const Text("Select Date"),
 
                         const SizedBox(height: 10),
@@ -173,7 +228,7 @@ class _FirebaseBookingScreenState
 
                         const SizedBox(height: 20),
 
-                        /// ✅ TIME
+                        /// TIME
                         const Text("Select Time"),
 
                         const SizedBox(height: 10),
@@ -214,7 +269,7 @@ class _FirebaseBookingScreenState
 
                         const SizedBox(height: 40),
 
-                        /// ✅ BUTTON (FIXED ✅)
+                        /// BUTTON
                         SizedBox(
                           width: double.infinity,
                           height: 55,
@@ -250,9 +305,13 @@ class _FirebaseBookingScreenState
                                     );
                                   },
                             child: const Text(
-                              "Book Appointment - 50 DT",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+  "Book Appointment - 50 DT",
+  style: TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 16,
+  ),
+),
+
                           ),
                         ),
                       ],

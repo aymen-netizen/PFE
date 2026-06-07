@@ -116,60 +116,59 @@ class _SplashScreenState extends State<SplashScreen>
                     final page = pages[index];
 
                     return FadeTransition(
-                      opacity: _animController,
-                      child: ScaleTransition(
-                        scale: Tween(begin: 0.9, end: 1.0)
-                            .animate(_animController),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
+  opacity: _animController,
+  child: ScaleTransition(
+    scale: Tween(begin: 0.9, end: 1.0)
+        .animate(_animController),
 
-                            /// ✅ Icon (animated look)
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                page.icon,
-                                size: 100,
-                                color: Colors.white,
-                              ),
-                            ),
+    child: SingleChildScrollView( // ✅ FIX
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
 
-                            const SizedBox(height: 30),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              page.icon,
+              size: 100,
+              color: Colors.white,
+            ),
+          ),
 
-                            /// ✅ Title
-                            Text(
-                              page.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+          const SizedBox(height: 30),
 
-                            const SizedBox(height: 15),
+          Text(
+            page.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
 
-                            /// ✅ Description
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 30),
-                              child: Text(
-                                page.description,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+          const SizedBox(height: 15),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Text(
+              page.description,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+);
                   },
                 ),
               ),

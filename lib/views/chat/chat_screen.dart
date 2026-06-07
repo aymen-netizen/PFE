@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// ❌ REMOVED chatbot import
 
 class ChatScreen extends StatefulWidget {
   final String assistantId;
   final String profession;
+  final String chatId;
 
   const ChatScreen({
     super.key,
     required this.assistantId,
     required this.profession,
+    required this.chatId,
   });
 
   @override
@@ -18,18 +19,10 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-
   final TextEditingController _controller = TextEditingController();
-
-  String getChatId(String id1, String id2) {
-    List<String> ids = [id1, id2];
-    ids.sort();
-    return ids.join("_");
-  }
 
   @override
   Widget build(BuildContext context) {
-
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -38,8 +31,6 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
-    final chatId = getChatId(user.uid, widget.assistantId);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
 
@@ -47,7 +38,6 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: Colors.white,
         elevation: 1,
         iconTheme: const IconThemeData(color: Colors.black),
-
         title: Row(
           children: [
             CircleAvatar(
@@ -58,9 +48,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: Color(0xFF0F7B8E),
               ),
             ),
-
             const SizedBox(width: 10),
-
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -71,9 +59,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const Text(
-                  "Assistant • Online", // ✅ updated text
+                  "Assistant • Online",
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey,
@@ -88,16 +75,15 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
 
-          // ✅ MESSAGES
+          /// ✅ REAL-TIME MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('chats')
-                  .doc(chatId)
+                  .collection('conversations')
+                  .doc(widget.chatId)
                   .collection('messages')
-                  .orderBy('timestamp')
+                  .orderBy('timestamp', descending: true)
                   .snapshots(),
-
               builder: (context, snapshot) {
 
                 if (!snapshot.hasData) {
@@ -108,13 +94,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 final messages = snapshot.data!.docs;
 
                 return ListView.builder(
+                  reverse: true,
                   padding: const EdgeInsets.all(12),
                   itemCount: messages.length,
 
                   itemBuilder: (context, index) {
 
-                    final data = messages[index].data()
-                        as Map<String, dynamic>;
+                    final data = messages[index].data() as Map<String, dynamic>;
 
                     final isMe = data['senderId'] == user.uid;
 
@@ -131,11 +117,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: isMe
                               ? const Color(0xFF0F7B8E)
                               : Colors.white,
-
-                          borderRadius:
-                              BorderRadius.circular(16),
-
-                          boxShadow: [
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: const [
                             BoxShadow(
                               color: Colors.black12,
                               blurRadius: 3,
@@ -159,7 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // ✅ INPUT BAR
+          /// ✅ INPUT
           Container(
             margin: const EdgeInsets.all(10),
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -201,22 +184,24 @@ class _ChatScreenState extends State<ChatScreen> {
 
                     _controller.clear();
 
-                    final user =
-                        FirebaseAuth.instance.currentUser!;
+                    final currentUser = FirebaseAuth.instance.currentUser!;
 
-                    final chatId =
-                        getChatId(user.uid, widget.assistantId);
-
-                    // ✅ ONLY THIS REMAINS
                     await FirebaseFirestore.instance
-                        .collection('chats')
-                        .doc(chatId)
+                        .collection('conversations')
+                        .doc(widget.chatId)
                         .collection('messages')
                         .add({
-                      'senderId': user.uid,
+                      'senderId': currentUser.uid,
                       'text': text,
-                      'timestamp':
-                          FieldValue.serverTimestamp(),
+                      'timestamp': FieldValue.serverTimestamp(),
+                    });
+
+                    await FirebaseFirestore.instance
+                        .collection('conversations')
+                        .doc(widget.chatId)
+                        .update({
+                      'lastMessage': text,
+                      'lastTime': FieldValue.serverTimestamp(),
                     });
                   },
                 ),

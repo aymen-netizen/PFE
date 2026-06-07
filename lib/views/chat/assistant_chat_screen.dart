@@ -5,10 +5,12 @@ import 'dart:convert';
 
 class AssistantChatScreen extends StatefulWidget {
   final String patientId;
+  final String chatId;
 
   const AssistantChatScreen({
     super.key,
     required this.patientId,
+    required this.chatId,
   });
 
   @override
@@ -19,114 +21,90 @@ class AssistantChatScreen extends StatefulWidget {
 class _AssistantChatScreenState
     extends State<AssistantChatScreen> {
 
-  final TextEditingController _controller =
-      TextEditingController();
-
-  String getChatId(String id1, String id2) {
-    List<String> ids = [id1, id2];
-    ids.sort();
-    return ids.join("_");
-  }
+  final TextEditingController _controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
 
-    final assistant =
-        FirebaseAuth.instance.currentUser!;
-
-    final chatId =
-        getChatId(assistant.uid, widget.patientId);
+    final assistant = FirebaseAuth.instance.currentUser!;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.green,
-        iconTheme:
-            const IconThemeData(color: Colors.white),
-        title: const Text("Chat",
-            style: TextStyle(color: Colors.white)),
+        title: const Text(
+          "Chat",
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
 
       body: Column(
         children: [
 
-          // ✅ MESSAGES
+          /// ✅ REAL-TIME MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('chats')
-                  .doc(chatId)
+                  .collection('conversations')
+                  .doc(widget.chatId)
                   .collection('messages')
-                  .orderBy('timestamp')
+                  .orderBy('timestamp', descending: true)
                   .snapshots(),
 
               builder: (context, snapshot) {
 
-                if (!snapshot.hasData) {
-                  return const Center(
-                      child:
-                          CircularProgressIndicator());
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text("No messages yet"));
                 }
 
                 final messages = snapshot.data!.docs;
 
                 return ListView.builder(
-                  padding:
-                      const EdgeInsets.all(10),
+                  reverse: true,
+                  padding: const EdgeInsets.all(10),
                   itemCount: messages.length,
 
                   itemBuilder: (context, index) {
 
                     final data =
-                        messages[index].data()
-                            as Map<String, dynamic>;
+                        messages[index].data() as Map<String, dynamic>;
 
-                    final isAssistant =
-                        data['senderId'] ==
-                            assistant.uid;
+                    final isMe =
+                        data['senderId'] == assistant.uid;
 
                     return Align(
-                      alignment: isAssistant
+                      alignment: isMe
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
 
                       child: Container(
                         margin:
-                            const EdgeInsets.symmetric(
-                                vertical: 5),
-                        padding:
-                            const EdgeInsets.all(12),
+                            const EdgeInsets.symmetric(vertical: 5),
+                        padding: const EdgeInsets.all(12),
 
                         decoration: BoxDecoration(
-                          color: isAssistant
+                          color: isMe
                               ? Colors.green.shade300
                               : Colors.grey.shade300,
                           borderRadius:
-                              BorderRadius.circular(
-                                  15),
+                              BorderRadius.circular(15),
                         ),
 
                         child: Column(
-                          crossAxisAlignment:
-                              isAssistant
-                                  ? CrossAxisAlignment
-                                      .end
-                                  : CrossAxisAlignment
-                                      .start,
+                          crossAxisAlignment: isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
                           children: [
 
-                            // ✅ TEXT
                             if (data['text'] != null)
                               Text(data['text']),
 
-                            // ✅ IMAGE (CAN VIEW ONLY)
                             if (data['image'] != null)
                               Padding(
                                 padding:
-                                    const EdgeInsets
-                                        .only(top: 8),
+                                    const EdgeInsets.only(top: 8),
                                 child: Image.memory(
-                                  base64Decode(
-                                      data['image']),
+                                  base64Decode(data['image']),
                                   height: 150,
                                 ),
                               ),
@@ -140,24 +118,20 @@ class _AssistantChatScreenState
             ),
           ),
 
-          // ✅ INPUT (TEXT ONLY)
+          /// ✅ INPUT BOX
           Container(
-            padding:
-                const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: Row(
               children: [
 
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration:
-                        InputDecoration(
-                      hintText: "Type message...",
-                      border:
-                          OutlineInputBorder(
+                    decoration: InputDecoration(
+                      hintText: "Type a message...",
+                      border: OutlineInputBorder(
                         borderRadius:
-                            BorderRadius.circular(
-                                20),
+                            BorderRadius.circular(20),
                       ),
                     ),
                   ),
@@ -166,46 +140,33 @@ class _AssistantChatScreenState
                 IconButton(
                   icon: const Icon(Icons.send,
                       color: Colors.green),
+
                   onPressed: () async {
 
-                    final text =
-                        _controller.text.trim();
+                    final text = _controller.text.trim();
                     if (text.isEmpty) return;
 
-                    // ✅ SEND TEXT ONLY
-                    await FirebaseFirestore
-                        .instance
-                        .collection('chats')
-                        .doc(chatId)
+                    _controller.clear();
+
+                    await FirebaseFirestore.instance
+                        .collection('conversations')
+                        .doc(widget.chatId)
                         .collection('messages')
                         .add({
-                      'senderId':
-                          assistant.uid,
+                      'senderId': assistant.uid,
                       'text': text,
                       'timestamp':
-                          FieldValue
-                              .serverTimestamp(),
+                          FieldValue.serverTimestamp(),
                     });
 
-                    // ✅ UPDATE CHAT
-                    await FirebaseFirestore
-                        .instance
-                        .collection('chats')
-                        .doc(chatId)
-                        .set({
-                      'participants': [
-                        assistant.uid,
-                        widget.patientId
-                      ],
-                      'assistantId':
-                          assistant.uid,
+                    await FirebaseFirestore.instance
+                        .collection('conversations')
+                        .doc(widget.chatId)
+                        .update({
                       'lastMessage': text,
-                      'updatedAt':
-                          FieldValue
-                              .serverTimestamp(),
-                    }, SetOptions(merge: true));
-
-                    _controller.clear();
+                      'lastTime':
+                          FieldValue.serverTimestamp(),
+                    });
                   },
                 ),
               ],

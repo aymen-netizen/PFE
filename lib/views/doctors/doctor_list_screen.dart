@@ -23,39 +23,6 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     'generaliste',
   ];
 
-  String getDoctorImage(String specialty, String uid) {
-    final Map<String, List<String>> imagesMap = {
-
-      'cardiologue': [
-        'assets/doctors/cardiologue/cardiologue1.jpg',
-        'assets/doctors/cardiologue/cardiologue2.jpg',
-        'assets/doctors/cardiologue/cardiologue3.jpg',
-      ],
-
-      'dentiste': [
-        'assets/doctors/dentiste/dentiste1.jpg',
-        'assets/doctors/dentiste/dentiste2.jpg',
-      ],
-
-      'generaliste': [
-        'assets/doctors/medecine_generale/medecine_generale1.jpg',
-      ],
-
-      'dermatologue': [
-        'assets/doctors/medecine_generale/medecine_generale1.jpg',
-      ],
-    };
-
-    final list =
-        imagesMap[specialty.toLowerCase()] ??
-            imagesMap['dentiste']!;
-
-    final index =
-        uid.hashCode.abs() % list.length;
-
-    return list[index];
-  }
-
   @override
   Widget build(BuildContext context) {
 
@@ -65,7 +32,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
       body: Column(
         children: [
 
-          // ✅ SEARCH
+          /// ✅ SEARCH
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
@@ -75,8 +42,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(15),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -88,7 +54,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             ),
           ),
 
-          // ✅ ✅ NEW PREMIUM FILTER
+          /// ✅ FILTER
           SizedBox(
             height: 50,
             child: ListView(
@@ -170,10 +136,9 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
 
           const SizedBox(height: 10),
 
-          // ✅ DOCTOR LIST
+          /// ✅ LIST
           Expanded(
-            child:
-                StreamBuilder<List<Map<String, dynamic>>>(
+            child: StreamBuilder<List<Map<String, dynamic>>>(
               stream:
                   FirebaseDoctorService().doctorsStream(),
               builder: (context, snapshot) {
@@ -216,24 +181,31 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
 
                     final doc = filtered[i];
 
+                    /// ✅ ✅ CLEAN IMAGE PATH (FINAL FIX)
+                    final raw = doc['image'] ?? "";
+
+                    final cleaned = raw
+                        .toString()
+                        .trim()
+                        .replaceAll(RegExp(r'\s+'), '') // remove ALL spaces + newlines
+                        .replaceAll('assets/', '');     // remove duplicate prefix
+
+
+final imagePath = 'assets/${(doc['image'] ?? '').trim()}';
+
                     return Container(
-                      margin:
-                          const EdgeInsets.symmetric(
+                      margin: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
-
-                      padding:
-                          const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(12),
 
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius:
-                            BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(18),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black
-                                .withOpacity(0.05),
+                            color: Colors.black.withOpacity(0.05),
                             blurRadius: 10,
                           )
                         ],
@@ -242,18 +214,17 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                       child: Row(
                         children: [
 
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundImage: AssetImage(
-                              getDoctorImage(
-                                doc['specialty'],
-                                doc['uid'],
-                              ),
-                            ),
-                          ),
+                          /// ✅ AVATAR
+                         
+CircleAvatar(
+  radius: 28,
+  backgroundImage: AssetImage(imagePath),
+),
+
 
                           const SizedBox(width: 12),
 
+                          /// ✅ INFO
                           Expanded(
                             child: Column(
                               crossAxisAlignment:
@@ -271,9 +242,8 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                                 const SizedBox(height: 3),
 
                                 Text(
-                                  doc['specialty'],
-                                  style:
-                                      const TextStyle(
+                                  doc['specialty'] ?? '',
+                                  style: const TextStyle(
                                     color: Colors.grey,
                                   ),
                                 ),
@@ -293,6 +263,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                             ),
                           ),
 
+                          /// ✅ RIGHT SIDE
                           Column(
                             crossAxisAlignment:
                                 CrossAxisAlignment.end,
@@ -309,8 +280,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                               const SizedBox(height: 6),
 
                               ElevatedButton(
-                                style:
-                                    ElevatedButton.styleFrom(
+                                style: ElevatedButton.styleFrom(
                                   backgroundColor:
                                       const Color(0xFF0F7B8E),
                                   padding:
@@ -356,7 +326,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
   }
 }
 
-// ✅ capitalization helper
+/// ✅ STRING EXTENSION
 extension StringExtension on String {
   String capitalize() {
     if (isEmpty) return "";

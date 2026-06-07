@@ -12,8 +12,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    
-  mobile_scanner: ^3.5.5
+
+  mobile_scanner: ^3.5.5 
 
 
   qr_flutter: ^4.1.0
@@ -62,4 +62,4 @@ flutter:
     - assets/doctors/dentiste/
     - assets/doctors/medecine_generale/
     - assets/doctors/pediatre/
-    - assets/users/
+

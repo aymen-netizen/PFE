@@ -1,12 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:newapp/views/chat/chat_screen.dart';
 
 class SelectAssistantScreen extends StatelessWidget {
   const SelectAssistantScreen({super.key});
 
+  Future<String> getOrCreateConversation(
+    String userId,
+    String assistantId,
+  ) async {
+    final query = await FirebaseFirestore.instance
+        .collection('conversations')
+        .where('participants', arrayContains: userId)
+        .get();
+
+    for (var doc in query.docs) {
+      List participants = doc['participants'];
+
+      if (participants.contains(assistantId)) {
+        return doc.id;
+      }
+    }
+
+    final newDoc =
+        FirebaseFirestore.instance.collection('conversations').doc();
+
+    await newDoc.set({
+      'participants': [userId, assistantId],
+      'lastMessage': "",
+      'lastTime': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    return newDoc.id;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
 
@@ -48,18 +81,25 @@ class SelectAssistantScreen extends StatelessWidget {
 
               final assistantId = assistants[index].id;
               final name = data['name'] ?? "Assistant";
-              
-              // ✅ IMPORTANT FIX
               final specialty = data['specialty'] ?? "General";
 
               return GestureDetector(
-                onTap: () {
+                onTap: () async {
+
+                  if (currentUser == null) return;
+
+                  final chatId = await getOrCreateConversation(
+                    currentUser.uid,
+                    assistantId,
+                  );
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => ChatScreen(
                         assistantId: assistantId,
-                        profession: specialty, // ✅ correct value
+                        profession: specialty,
+                        chatId: chatId,
                       ),
                     ),
                   );
@@ -83,7 +123,6 @@ class SelectAssistantScreen extends StatelessWidget {
                   child: Row(
                     children: [
 
-                      // ✅ AVATAR
                       CircleAvatar(
                         radius: 28,
                         backgroundColor: const Color(0xFFE8F7F8),
@@ -95,7 +134,6 @@ class SelectAssistantScreen extends StatelessWidget {
 
                       const SizedBox(width: 12),
 
-                      // ✅ TEXT
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +150,7 @@ class SelectAssistantScreen extends StatelessWidget {
                             const SizedBox(height: 4),
 
                             Text(
-                              specialty, // ✅ cardiologue / dentiste...
+                              specialty,
                               style: const TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey,
