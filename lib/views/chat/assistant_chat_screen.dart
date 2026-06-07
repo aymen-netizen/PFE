@@ -24,6 +24,37 @@ class _AssistantChatScreenState
   final TextEditingController _controller = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    markMessagesAsRead();
+    resetUnread();
+  }
+
+  Future<void> markMessagesAsRead() async {
+    final assistant = FirebaseAuth.instance.currentUser!;
+
+    final messages = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(widget.chatId)
+        .collection('messages')
+        .where('senderId', isNotEqualTo: assistant.uid)
+        .get();
+
+    for (var doc in messages.docs) {
+      await doc.reference.update({'isRead': true});
+    }
+  }
+
+  Future<void> resetUnread() async {
+    await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(widget.chatId)
+        .update({
+      'hasUnread': false,
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
 
     final assistant = FirebaseAuth.instance.currentUser!;
@@ -41,7 +72,6 @@ class _AssistantChatScreenState
       body: Column(
         children: [
 
-          /// ✅ REAL-TIME MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -118,7 +148,6 @@ class _AssistantChatScreenState
             ),
           ),
 
-          /// ✅ INPUT BOX
           Container(
             padding: const EdgeInsets.all(10),
             child: Row(
@@ -157,6 +186,7 @@ class _AssistantChatScreenState
                       'text': text,
                       'timestamp':
                           FieldValue.serverTimestamp(),
+                      'isRead': false,
                     });
 
                     await FirebaseFirestore.instance
@@ -166,6 +196,7 @@ class _AssistantChatScreenState
                       'lastMessage': text,
                       'lastTime':
                           FieldValue.serverTimestamp(),
+                      'hasUnread': true,
                     });
                   },
                 ),

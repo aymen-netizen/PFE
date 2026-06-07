@@ -75,7 +75,6 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
 
-          /// ✅ REAL-TIME MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -101,7 +100,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
 
                     final data = messages[index].data() as Map<String, dynamic>;
-
                     final isMe = data['senderId'] == user.uid;
 
                     return Align(
@@ -111,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
 
                         decoration: BoxDecoration(
                           color: isMe
@@ -126,13 +124,33 @@ class _ChatScreenState extends State<ChatScreen> {
                           ],
                         ),
 
-                        child: Text(
-                          data['text'] ?? "",
-                          style: TextStyle(
-                            color: isMe
-                                ? Colors.white
-                                : Colors.black,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+
+                            Text(
+                              data['text'] ?? "",
+                              style: TextStyle(
+                                color: isMe
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                            ),
+
+                            if (isMe)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  data['isRead'] == true
+                                      ? "✔✔ Seen"
+                                      : "✔ Sent",
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     );
@@ -142,7 +160,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          /// ✅ INPUT
           Container(
             margin: const EdgeInsets.all(10),
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -194,6 +211,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       'senderId': currentUser.uid,
                       'text': text,
                       'timestamp': FieldValue.serverTimestamp(),
+                      'isRead': false,
                     });
 
                     await FirebaseFirestore.instance
@@ -202,6 +220,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         .update({
                       'lastMessage': text,
                       'lastTime': FieldValue.serverTimestamp(),
+                      'hasUnread': true,
                     });
                   },
                 ),

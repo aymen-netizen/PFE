@@ -22,96 +22,111 @@ class AssistantChatDashboard extends StatelessWidget {
       ),
 
       body: StreamBuilder<QuerySnapshot>(
-  stream: FirebaseFirestore.instance
-      .collection('conversations')
-      .where(
-        'participants',
-        arrayContains: assistant.uid,
-      )
-      .snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('conversations')
+            .where(
+              'participants',
+              arrayContains: assistant.uid,
+            )
+            .snapshots(),
 
-  builder: (context, snapshot) {
+        builder: (context, snapshot) {
 
-    if (snapshot.connectionState == ConnectionState.waiting) {
-      return const Center(child: CircularProgressIndicator());
-    }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-      return const Center(child: Text("No conversations"));
-    }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No conversations"));
+          }
 
-    final conversations = snapshot.data!.docs.toList()
-      ..sort((a, b) {
-        final aData = a.data() as Map<String, dynamic>;
-        final bData = b.data() as Map<String, dynamic>;
+          final conversations = snapshot.data!.docs.toList()
+            ..sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
 
-        final aTime = aData['lastTime'] as Timestamp?;
-        final bTime = bData['lastTime'] as Timestamp?;
+              final aTime = aData['lastTime'] as Timestamp?;
+              final bTime = bData['lastTime'] as Timestamp?;
 
-        if (aTime == null || bTime == null) return 0;
-        return bTime.compareTo(aTime);
-      });
+              if (aTime == null || bTime == null) return 0;
+              return bTime.compareTo(aTime);
+            });
 
-    return ListView.builder(
-      itemCount: conversations.length,
+          return ListView.builder(
+            itemCount: conversations.length,
 
-      itemBuilder: (context, index) {
+            itemBuilder: (context, index) {
 
-        final doc = conversations[index];
-        final data = doc.data() as Map<String, dynamic>;
+              final doc = conversations[index];
+              final data = doc.data() as Map<String, dynamic>;
 
-        final participants =
-            List<String>.from(data['participants'] ?? []);
+              final participants =
+                  List<String>.from(data['participants'] ?? []);
 
-        final otherUserId =
-            participants.firstWhere((id) => id != assistant.uid);
+              final otherUserId =
+                  participants.firstWhere((id) => id != assistant.uid);
 
-        String time = "";
-        if (data['lastTime'] != null) {
-          final dt =
-              (data['lastTime'] as Timestamp).toDate();
-          time = DateFormat('HH:mm').format(dt);
-        }
+              String time = "";
+              if (data['lastTime'] != null) {
+                final dt =
+                    (data['lastTime'] as Timestamp).toDate();
+                time = DateFormat('HH:mm').format(dt);
+              }
 
-        return ListTile(
-          leading: const CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.green,
-            child: Icon(Icons.person, color: Colors.white),
-          ),
-
-          title: Text(
-            data['assistantName'] ?? "Patient",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-
-          subtitle: Text(
-            data['lastMessage'] ?? "",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-
-          trailing: Text(
-            time,
-            style: const TextStyle(fontSize: 12),
-          ),
-
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AssistantChatScreen(
-                  patientId: otherUserId,
-                  chatId: doc.id,
+              return ListTile(
+                leading: const CircleAvatar(
+                  radius: 26,
+                  backgroundColor: Colors.green,
+                  child: Icon(Icons.person, color: Colors.white),
                 ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  },
-)
+
+                title: Text(
+                  data['assistantName'] ?? "Patient",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+
+                subtitle: Text(
+                  data['lastMessage'] ?? "",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                trailing: data['hasUnread'] == true
+                    ? Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Text(
+                          "!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        time,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AssistantChatScreen(
+                        patientId: otherUserId,
+                        chatId: doc.id,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
