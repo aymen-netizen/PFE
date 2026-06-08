@@ -114,24 +114,24 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'S\'inscrire',
+                  'Sign up',
                   style: Theme.of(context).textTheme.headlineMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Créez votre compte gratuitement',
+                  'Create your account for free',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.grey[600],
                       ),
                 ),
                 const SizedBox(height: 48),
                 Customertextfield(
-                  hintText: 'Nom complet',
+                  hintText: 'Full Name',
                   controller: _nameController,
                   isPassword: false,
                   validator: (value) => value == null || value.isEmpty
-                      ? 'Nom requis'
+                      ? 'Name is required'
                       : null,
                 ),
                 const SizedBox(height: 20),
@@ -150,7 +150,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 20),
                 Customertextfield(
-                  hintText: 'Confirmer mot de passe',
+                  hintText: 'Confirm Password',
                   controller: _confirmPasswordController,
                   isPassword: true,
                   validator: (value) => validators.validateConfirmPassword(
@@ -160,7 +160,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 32),
                 PrimaryButton(
-                  text: _isLoading ? 'Inscription...' : 'S\'inscrire',
+                  text: _isLoading ? 'Signing up...' : 'Sign up',
                   onPressed: _isLoading ? null : _signup,
                 ),
                 const SizedBox(height: 24),
@@ -168,7 +168,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Déjà un compte ? ',
+                      'Already have an account?',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Colors.grey[600],
                           ),

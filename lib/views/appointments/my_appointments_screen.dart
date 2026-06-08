@@ -73,13 +73,13 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mes RDV'),
+        title: const Text('My Appointments'),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'En attente'),
-            Tab(text: 'Confirmés'),
-            Tab(text: 'Terminés'),
+            Tab(text: 'Pending'),
+            Tab(text: 'Confirmed'),
+            Tab(text: 'Completed'),
           ],
         ),
       ),
@@ -109,7 +109,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
 
   Widget _buildList(List<QueryDocumentSnapshot> docs) {
     if (docs.isEmpty) {
-      return const Center(child: Text('Aucun rendez-vous'));
+      return const Center(child: Text('No appointments available'));
     }
 
     return ListView.builder(

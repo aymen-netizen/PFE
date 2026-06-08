@@ -130,7 +130,7 @@ class _AnalysesScreenState extends State<AnalysesScreen> {
                     const SizedBox(height: 15),
 
                     const Text(
-                      "Analyses",
+                      "Tests",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.green,

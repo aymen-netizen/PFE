@@ -11,7 +11,7 @@ class DossierScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-  title: const Text("Dossier Médical"),
+  title: const Text("Medical Record"),
   backgroundColor: Colors.green,
 
   // ✅ FORCE BACK BUTTON COLOR
@@ -47,7 +47,7 @@ class DossierScreen extends StatelessWidget {
                 final docs = snapshot.data!.docs;
 
                 if (docs.isEmpty) {
-                  return const Center(child: Text("Aucun dossier disponible"));
+                  return const Center(child: Text("No records available"));
                 }
 
                 return ListView.builder(
@@ -134,7 +134,7 @@ class DossierScreen extends StatelessWidget {
                           // ✅ ANALYSES
                           if (analyses.isNotEmpty) ...[
                             const Text(
-                              "Analyses",
+                              "Tests",
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.green),
