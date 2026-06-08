@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:newapp/services/chatbot_logic.dart';
 import '../payment/payment_screen.dart';
 
 class ChatbotScreen extends StatefulWidget {
@@ -21,13 +20,31 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   String selectedSpecialty = "";
   String selectedDoctor = "";
   String selectedDoctorName = "";
+  String selectedDate = "";
   String selectedTime = "";
-  String selectedPaymentMethod = ""; // NEW
-
-  List<String> symptoms = [];
-  List<String> selectedSymptoms = [];
+  String selectedPaymentMethod = "";
 
   List<Map<String, dynamic>> doctors = [];
+
+  List<String> availableTimes = [
+    "09:00",
+    "10:00",
+    "11:00",
+    "14:00",
+    "15:00",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    messages.add({
+      "sender": "bot",
+      "text":
+          "👋 Welcome! I'm your medical assistant.\n\n"
+          "Describe your symptoms and I will guide you."
+    });
+  }
 
   // ✅ LOAD DOCTORS
   Future<void> loadDoctors() async {
@@ -37,12 +54,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         .get();
 
     doctors = snapshot.docs.where((doc) {
-      final dbValue = (doc['specialty'] ?? "")
-          .toString()
-          .toLowerCase()
-          .trim();
-
-      return dbValue == selectedSpecialty;
+      return (doc['specialty'] ?? "").toString().toLowerCase()
+          .trim() ==
+          selectedSpecialty;
     }).map((doc) {
       return {
         "id": doc.id,
@@ -52,10 +66,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   void sendBotMessage(String text) {
-    Future.delayed(const Duration(milliseconds: 200), () {
-      setState(() {
-        messages.add({"sender": "bot", "text": text});
-      });
+    setState(() {
+      messages.add({"sender": "bot", "text": text});
     });
   }
 
@@ -70,13 +82,68 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     selectedSpecialty = "";
     selectedDoctor = "";
     selectedDoctorName = "";
+    selectedDate = "";
     selectedTime = "";
-    selectedPaymentMethod = ""; 
-    symptoms = [];
-    selectedSymptoms = [];
+    selectedPaymentMethod = "";
   }
 
-  // ✅ DATE PICKER
+  // ✅ AI LOGIC (FIXED ASYNC)
+ Future<void> handleAI(String text) async {
+
+  final input = text.toLowerCase();
+
+  // ❤️ HEART
+  if (input.contains("chest") ||
+      input.contains("heart") ||
+      input.contains("breath")) {
+
+    selectedSpecialty = "cardiologue";
+
+    currentStep = "symptoms";
+
+    sendBotMessage(
+      "❤️ I understand your symptoms.\n\n"
+      "👉 Do you also have:\n"
+      "• Dizziness\n"
+      "• Palpitations\n"
+      "• Fatigue ?\n\n"
+      "Type or choose symptoms."
+    );
+
+    setState(() {});
+    return;
+  }
+
+  // ✅ USER ADDS SYMPTOMS
+  if (currentStep == "symptoms") {
+
+    // you could store them if needed
+    await loadDoctors();
+
+    currentStep = "doctor";
+
+    sendBotMessage("✅ Thank you.\n\nPlease choose a doctor:");
+
+    setState(() {});
+    return;
+  }
+
+  // ✅ YES
+  if (input.contains("yes")) {
+
+    await loadDoctors();
+
+    currentStep = "doctor";
+
+    sendBotMessage("✅ Choose a doctor:");
+
+    setState(() {});
+    return;
+  }
+
+  sendBotMessage("💬 Please describe your symptoms.");
+}
+  // ✅ DATE
   Future<void> pickDate() async {
 
     final picked = await showDatePicker(
@@ -88,163 +155,35 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     if (picked == null) return;
 
-    final dayName = [
-      "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"
-    ][picked.weekday - 1];
+    selectedDate = picked.toString().split(" ")[0];
 
-    final schedule = await FirebaseFirestore.instance
-        .collection('schedules')
-        .doc(selectedDoctor)
-        .get();
+    currentStep = "time";
 
-    if (!schedule.exists) {
-      sendBotMessage("⚠️ No schedule found.");
-      return;
-    }
-
-    final data = schedule.data()!;
-    final List days = data['days'];
-
-    if (!days.contains(dayName)) {
-      sendBotMessage("❌ Not available on $dayName");
-      return;
-    }
-
-    final selectedDate = picked.toString().split(" ")[0];
-
-    selectedTime = selectedDate;
-
-    // ✅ GO TO PAYMENT STEP
-    currentStep = "payment";
-
-    sendBotMessage(
-      "✅ Available!\nDoctor: $selectedDoctorName\nDate: $selectedTime\n\n💳 Choose payment method:"
-    );
+    sendBotMessage("🕒 Select time:");
 
     setState(() {});
   }
 
-  // ✅ BOOK APPOINTMENT
+  // ✅ BOOK
   Future<void> bookAppointment() async {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     await FirebaseFirestore.instance.collection('appointments').add({
-  'patientId': user.uid,
-  'doctorId': selectedDoctor,
-  'doctorName': selectedDoctorName,
-  'specialty': selectedSpecialty,
-  'date': selectedTime,
-  'time': "10:00",
-  'symptoms': symptoms,
-  'status': "pending",
-  'paymentMethod': selectedPaymentMethod, 
-  'createdAt': FieldValue.serverTimestamp(),
-});
-
+      'patientId': user.uid,
+      'doctorId': selectedDoctor,
+      'doctorName': selectedDoctorName,
+      'specialty': selectedSpecialty,
+      'date': selectedDate,
+      'time': selectedTime,
+      'status': "pending",
+      'paymentMethod': selectedPaymentMethod,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
     sendBotMessage("✅ Appointment booked!");
     resetFlow();
-  }
-
-  // ✅ FLOW
-  void handleStep(String value) {
-
-    addUserMessage(value);
-
-    // CHAT
-    if (currentStep == "chat") {
-      if (value.contains("Book")) {
-        currentStep = "start";
-        sendBotMessage("Choose a specialty:");
-      } else if (value.contains("Ask")) {
-        sendBotMessage("💬 Ask me anything!");
-      }
-      setState(() {});
-    }
-
-    // SPECIALTY
-    else if (currentStep == "start") {
-      selectedSpecialty = value.split(" ").last.toLowerCase();
-      selectedSymptoms = [];
-
-      currentStep = "symptoms";
-      sendBotMessage("Select your symptoms:");
-      setState(() {});
-    }
-
-    // SYMPTOMS
-    else if (currentStep == "symptoms") {
-      if (selectedSymptoms.contains(value)) {
-        selectedSymptoms.remove(value);
-      } else {
-        selectedSymptoms.add(value);
-      }
-      setState(() {});
-    }
-
-    // DOCTOR
-    else if (currentStep == "doctor") {
-      final selected = doctors.firstWhere((d) => d['name'] == value);
-
-      selectedDoctor = selected['id'];
-      selectedDoctorName = selected['name'];
-
-      currentStep = "time";
-      sendBotMessage("Pick a date:");
-      setState(() {});
-    }
-
-    // ✅ PAYMENT STEP
-    else if (currentStep == "payment") {
-
-  selectedPaymentMethod = value;
-
-  currentStep = "confirm";  // FIX
-
-  sendBotMessage(
-    "✅ Payment: $selectedPaymentMethod\n\nConfirm appointment?"
-  );
-
-  setState(() {});
-}
-
-
-    // CONFIRM
-    else if (currentStep == "confirm") {
-
-  if (value.contains("Confirm")) {
-
-    // ✅ IF CASH → book directly
-    if (selectedPaymentMethod == "💳 Cash") {
-      bookAppointment();
-    }
-
-    // ✅ IF CARD → GO TO PAYMENT SCREEN
-    else if (selectedPaymentMethod == "💳 Card") {
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentScreen(
-            doctorId: selectedDoctor,
-            doctorName: selectedDoctorName,
-            specialty: selectedSpecialty,
-            selectedDate: selectedTime,
-            selectedTime: "10:00",
-            symptoms: symptoms.join(", "),
-          ),
-        ),
-      );
-    }
-
-    // ✅ BINANCE (optional later)
-    else {
-      sendBotMessage("⚠️ Payment method not supported yet");
-    }
-  }
-}
   }
 
   @override
@@ -259,6 +198,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       body: Column(
         children: [
 
+          // ✅ CHAT
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(12),
@@ -269,19 +209,19 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 final isUser = msg['sender'] == "user";
 
                 return Align(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isUser
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 6),
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isUser ? Colors.green : Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(15),
                     ),
                     child: Text(
                       msg['text']!,
                       style: TextStyle(
-                        fontSize: 16,
                         color: isUser ? Colors.white : Colors.black,
                       ),
                     ),
@@ -291,122 +231,113 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             ),
           ),
 
-          // ✅ BUTTONS
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
+          // ✅ DOCTORS
+          if (currentStep == "doctor")
+            Wrap(
+              children: doctors.map((d) => ElevatedButton(
+                onPressed: () {
+                  selectedDoctor = d['id'];
+                  selectedDoctorName = d['name'];
+
+                  currentStep = "date";
+
+                  sendBotMessage("📅 Pick a date");
+
+                  setState(() {});
+                },
+                child: Text(d['name']),
+              )).toList(),
+            ),
+
+          // ✅ DATE
+          if (currentStep == "date")
+            ElevatedButton(
+              onPressed: pickDate,
+              child: const Text("Select Date"),
+            ),
+
+          // ✅ TIME
+          if (currentStep == "time")
+            Wrap(
+              children: availableTimes.map((t) =>
+                  ElevatedButton(
+                    onPressed: () {
+                      selectedTime = t;
+                      currentStep = "payment";
+
+                      sendBotMessage("💳 Choose payment");
+
+                      setState(() {});
+                    },
+                    child: Text(t),
+                  )
+              ).toList(),
+            ),
+
+          // ✅ PAYMENT
+          if (currentStep == "payment")
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                ElevatedButton(
+                  onPressed: () {
+                    selectedPaymentMethod = "Cash";
+                    bookAppointment();
+                  },
+                  child: const Text("Cash"),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {
+                    selectedPaymentMethod = "Card";
 
-                if (currentStep == "chat") ...[
-                  bigButton("📅 Book Appointment"),
-                  bigButton("💬 Ask Question"),
-                ],
-
-                if (currentStep == "start") ...[
-                  bigButton("🦷 Dentiste"),
-                  bigButton("❤️ Cardiologue"),
-                  bigButton("🧴 Dermatologue"),
-                  bigButton("🩺 Generaliste"),
-                ],
-
-                if (currentStep == "symptoms") ...[
-                  ...getSymptoms(),
-                  bigButton("✅ Next", onTap: nextFromSymptoms),
-                ],
-
-                if (currentStep == "doctor") ...[
-                  for (var doc in doctors)
-                    bigButton(doc['name']),
-                ],
-
-                if (currentStep == "time") ...[
-                  bigButton("📅 Pick Date", onTap: pickDate),
-                ],
-
-                // ✅ PAYMENT BUTTONS
-                if (currentStep == "payment") ...[
-                  bigButton("💳 Cash"),
-                  bigButton("💳 Card"),
-                  ],
-
-                if (currentStep == "confirm") ...[
-                  bigButton("✅ Confirm"),
-                ],
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PaymentScreen(
+                          doctorId: selectedDoctor,
+                          doctorName: selectedDoctorName,
+                          specialty: selectedSpecialty,
+                          selectedDate: selectedDate,
+                          selectedTime: selectedTime,
+                          symptoms: "",
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text("Card"),
+                ),
               ],
             ),
-          ),
 
+          // ✅ INPUT
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  decoration: const InputDecoration(hintText: "Type..."),
+                  decoration: const InputDecoration(
+                      hintText: "Describe symptoms..."),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.send),
-                onPressed: () {
+                onPressed: () async {
+
                   final text = _controller.text.trim();
                   if (text.isEmpty) return;
 
                   addUserMessage(text);
 
-                  if (currentStep == "chat") {
-                    sendBotMessage(ChatbotLogic.getReply(text));
-                  }
+                  await handleAI(text);
 
                   _controller.clear();
                 },
-              )
+              ),
             ],
-          ),
+          )
         ],
       ),
     );
-  }
-
-  Widget bigButton(String text, {VoidCallback? onTap}) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onTap ?? () => handleStep(text),
-        child: Text(text),
-      ),
-    );
-  }
-
-  List<Widget> getSymptoms() {
-    Map<String, List<String>> data = {
-      "dentiste": ["Tooth pain", "Sensitivity", "Swelling"],
-      "cardiologue": ["Chest pain", "Short breath", "Palpitations"],
-      "dermatologue": ["Rash", "Itching", "Red spots"],
-      "generaliste": ["Fever", "Fatigue", "Headache"],
-    };
-
-    final list = data[selectedSpecialty];
-
-    if (list == null) {
-      return [const Text("⚠️ No symptoms")];
-    }
-
-    return list.map((s) => bigButton(s, onTap: () => handleStep(s))).toList();
-  }
-
-  void nextFromSymptoms() async {
-    if (selectedSymptoms.isEmpty) {
-      sendBotMessage("⚠️ Select symptoms");
-      return;
-    }
-
-    symptoms = List.from(selectedSymptoms);
-
-    await loadDoctors();
-
-    currentStep = "doctor";
-    sendBotMessage("Choose a doctor:");
-    setState(() {});
   }
 }

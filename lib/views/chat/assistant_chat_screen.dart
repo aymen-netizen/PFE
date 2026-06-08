@@ -23,9 +23,16 @@ class _AssistantChatScreenState
 
   final TextEditingController _controller = TextEditingController();
 
+  late DocumentReference convoRef;
+
   @override
   void initState() {
     super.initState();
+
+    convoRef = FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(widget.chatId);
+
     markMessagesAsRead();
     resetUnread();
   }
@@ -33,9 +40,7 @@ class _AssistantChatScreenState
   Future<void> markMessagesAsRead() async {
     final assistant = FirebaseAuth.instance.currentUser!;
 
-    final messages = await FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(widget.chatId)
+    final messages = await convoRef
         .collection('messages')
         .where('senderId', isNotEqualTo: assistant.uid)
         .get();
@@ -46,10 +51,7 @@ class _AssistantChatScreenState
   }
 
   Future<void> resetUnread() async {
-    await FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(widget.chatId)
-        .update({
+    await convoRef.update({
       'hasUnread': false,
     });
   }
@@ -72,11 +74,10 @@ class _AssistantChatScreenState
       body: Column(
         children: [
 
+          // ✅ MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('conversations')
-                  .doc(widget.chatId)
+              stream: convoRef
                   .collection('messages')
                   .orderBy('timestamp', descending: true)
                   .snapshots(),
@@ -108,22 +109,21 @@ class _AssistantChatScreenState
                           : Alignment.centerLeft,
 
                       child: Container(
-                        margin:
-                            const EdgeInsets.symmetric(vertical: 5),
+                        margin: const EdgeInsets.symmetric(vertical: 5),
                         padding: const EdgeInsets.all(12),
 
                         decoration: BoxDecoration(
                           color: isMe
                               ? Colors.green.shade300
                               : Colors.grey.shade300,
-                          borderRadius:
-                              BorderRadius.circular(15),
+                          borderRadius: BorderRadius.circular(15),
                         ),
 
                         child: Column(
                           crossAxisAlignment: isMe
                               ? CrossAxisAlignment.end
                               : CrossAxisAlignment.start,
+
                           children: [
 
                             if (data['text'] != null)
@@ -131,8 +131,7 @@ class _AssistantChatScreenState
 
                             if (data['image'] != null)
                               Padding(
-                                padding:
-                                    const EdgeInsets.only(top: 8),
+                                padding: const EdgeInsets.only(top: 8),
                                 child: Image.memory(
                                   base64Decode(data['image']),
                                   height: 150,
@@ -148,8 +147,10 @@ class _AssistantChatScreenState
             ),
           ),
 
+          // ✅ INPUT
           Container(
             padding: const EdgeInsets.all(10),
+
             child: Row(
               children: [
 
@@ -159,16 +160,14 @@ class _AssistantChatScreenState
                     decoration: InputDecoration(
                       hintText: "Type a message...",
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
                 ),
 
                 IconButton(
-                  icon: const Icon(Icons.send,
-                      color: Colors.green),
+                  icon: const Icon(Icons.send, color: Colors.green),
 
                   onPressed: () async {
 
@@ -177,26 +176,32 @@ class _AssistantChatScreenState
 
                     _controller.clear();
 
-                    await FirebaseFirestore.instance
-                        .collection('conversations')
-                        .doc(widget.chatId)
-                        .collection('messages')
-                        .add({
-                      'senderId': assistant.uid,
-                      'text': text,
-                      'timestamp':
-                          FieldValue.serverTimestamp(),
-                      'isRead': false,
+                    final assistant =
+                        FirebaseAuth.instance.currentUser!;
+
+                    // ✅ ENSURE CONVERSATION EXISTS
+                    await convoRef.set({
+                      'participants': [
+                        assistant.uid,
+                        widget.patientId
+                      ],
+                      'assistantId': assistant.uid,
+                      'patientId': widget.patientId,
+                    }, SetOptions(merge: true));
+
+                    // ✅ UPDATE LAST MESSAGE
+                    await convoRef.update({
+                      'lastMessage': text,
+                      'lastTime': FieldValue.serverTimestamp(),
+                      'hasUnread': true,
                     });
 
-                    await FirebaseFirestore.instance
-                        .collection('conversations')
-                        .doc(widget.chatId)
-                        .update({
-                      'lastMessage': text,
-                      'lastTime':
-                          FieldValue.serverTimestamp(),
-                      'hasUnread': true,
+                    // ✅ ADD MESSAGE
+                    await convoRef.collection('messages').add({
+                      'senderId': assistant.uid,
+                      'text': text,
+                      'timestamp': FieldValue.serverTimestamp(),
+                      'isRead': false,
                     });
                   },
                 ),

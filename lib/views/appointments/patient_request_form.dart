@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../payment/payment_screen.dart';
 
 class PatientRequestForm extends StatefulWidget {
-
   final String doctorId;
   final String doctorName;
   final String specialty;
@@ -28,16 +27,72 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
   final TextEditingController _reasonController =
       TextEditingController();
 
-  final List<String> symptomsList = [
-    'Fever',
-    'Headache',
-    'Cough',
-    'Fatigue',
-    'Chest pain',
-    'Dizziness',
-  ];
+  late List<String> symptomsList; 
 
   final List<String> selectedSymptoms = [];
+
+  @override
+  void initState() {
+    super.initState();
+    symptomsList =
+        _getSymptomsBySpecialty(widget.specialty);
+  }
+
+  List<String> _getSymptomsBySpecialty(String specialty) {
+    switch (specialty.toLowerCase()) {
+
+      case 'cardiologue':
+      case 'cardio':
+        return [
+          'Chest pain',
+          'Shortness of breath',
+          'Heart palpitations',
+          'Fatigue',
+          'High blood pressure',
+          'Dizziness',
+        ];
+
+      case 'dentiste':
+      case 'dentist':
+        return [
+          'Tooth pain',
+          'Gum bleeding',
+          'Bad breath',
+          'Tooth sensitivity',
+          'Swollen gums',
+          'Jaw pain',
+        ];
+
+      case 'dermatologie':
+      case 'dermatologist':
+        return [
+          'Skin rash',
+          'Acne',
+          'Itching',
+          'Red spots',
+          'Dry skin',
+          'Skin infection',
+        ];
+
+      case 'medecine generale':
+      case 'general':
+        return [
+          'Fever',
+          'Headache',
+          'Cough',
+          'Fatigue',
+          'Body pain',
+          'Dizziness',
+        ];
+
+      default:
+        return [
+          'Fever',
+          'Headache',
+          'Fatigue',
+        ];
+    }
+  }
 
   void _toggle(String value) {
     setState(() {
@@ -78,19 +133,18 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
     final symptomsText = _buildSymptomsText();
 
     Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (_) => PaymentScreen(
-      doctorId: widget.doctorId,
-      doctorName: widget.doctorName,
-      specialty: widget.specialty,
-      selectedDate: widget.selectedDate,
-      selectedTime: widget.selectedTime,
-      symptoms: symptomsText,
-    ),
-  ),
-);
-
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          doctorId: widget.doctorId,
+          doctorName: widget.doctorName,
+          specialty: widget.specialty,
+          selectedDate: widget.selectedDate,
+          selectedTime: widget.selectedTime,
+          symptoms: symptomsText,
+        ),
+      ),
+    );
   }
 
   @override
@@ -109,7 +163,7 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // ✅ DOCTOR INFO (NEW - VERY IMPORTANT)
+            // ✅ DOCTOR INFO
             Card(
               margin: const EdgeInsets.only(bottom: 15),
               child: Padding(
@@ -128,7 +182,6 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
               ),
             ),
 
-            // ✅ TEXT FIELD
             TextField(
               controller: _reasonController,
               decoration: const InputDecoration(
@@ -148,7 +201,6 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
 
             const SizedBox(height: 10),
 
-            // ✅ SYMPTOMS LIST
             Expanded(
               child: ListView(
                 children: symptomsList.map((symptom) {
@@ -173,7 +225,6 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
 
             const SizedBox(height: 10),
 
-            // ✅ BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

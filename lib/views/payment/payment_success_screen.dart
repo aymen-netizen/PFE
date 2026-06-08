@@ -72,14 +72,15 @@ class _PaymentSuccessScreenState
         alignment: Alignment.center,
         children: [
 
-          /// ✅ MAIN CONTENT
+          /// ✅ FIX: SCROLLABLE CONTENT
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
 
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+
+                  const SizedBox(height: 20),
 
                   /// ✅ CHECK ICON
                   ScaleTransition(
@@ -137,9 +138,9 @@ class _PaymentSuccessScreenState
                       child: Column(
                         children: [
 
-                          // ✅ ✅ THIS IS THE IMPORTANT FIX
+                          /// ✅ FIXED QR
                           QrImageView(
-                            data: widget.appointmentId,  // 🔥 FIX
+                            data: widget.appointmentId,
                             size: 200,
                           ),
 
@@ -158,6 +159,7 @@ class _PaymentSuccessScreenState
 
                   /// ✅ DETAILS
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -196,6 +198,8 @@ class _PaymentSuccessScreenState
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 30), // ✅ VERY IMPORTANT FIX
                 ],
               ),
             ),

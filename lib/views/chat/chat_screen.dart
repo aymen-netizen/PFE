@@ -31,6 +31,10 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
+    final convoRef = FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(widget.chatId);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
 
@@ -75,19 +79,17 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
 
+          // ✅ MESSAGES
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('conversations')
-                  .doc(widget.chatId)
+              stream: convoRef
                   .collection('messages')
                   .orderBy('timestamp', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
 
                 if (!snapshot.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final messages = snapshot.data!.docs;
@@ -160,6 +162,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
+          // ✅ INPUT
           Container(
             margin: const EdgeInsets.all(10),
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -201,26 +204,30 @@ class _ChatScreenState extends State<ChatScreen> {
 
                     _controller.clear();
 
-                    final currentUser = FirebaseAuth.instance.currentUser!;
+                    final currentUser =
+                        FirebaseAuth.instance.currentUser!;
 
-                    await FirebaseFirestore.instance
-                        .collection('conversations')
-                        .doc(widget.chatId)
-                        .collection('messages')
-                        .add({
+                    // ✅ CREATE OR UPDATE CONVERSATION
+                    await convoRef.set({
+                      'participants': [
+                        currentUser.uid,
+                        widget.assistantId
+                      ],
+                      'patientId': currentUser.uid,
+                      'assistantId': widget.assistantId,
+
+                      'lastMessage': text,
+                      'lastTime': FieldValue.serverTimestamp(),
+                      'hasUnread': true,
+                      'createdAt': FieldValue.serverTimestamp(),
+                    }, SetOptions(merge: true));
+
+                    // ✅ ADD MESSAGE
+                    await convoRef.collection('messages').add({
                       'senderId': currentUser.uid,
                       'text': text,
                       'timestamp': FieldValue.serverTimestamp(),
                       'isRead': false,
-                    });
-
-                    await FirebaseFirestore.instance
-                        .collection('conversations')
-                        .doc(widget.chatId)
-                        .update({
-                      'lastMessage': text,
-                      'lastTime': FieldValue.serverTimestamp(),
-                      'hasUnread': true,
                     });
                   },
                 ),

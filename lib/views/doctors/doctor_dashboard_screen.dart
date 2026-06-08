@@ -28,17 +28,17 @@ class DoctorDashboardScreen extends StatelessWidget {
   // ✅ STATUS LABEL
   String _statusLabel(String status) {
     switch (status) {
-      case 'confirmed':
-        return 'Confirmé';
-      case 'in_consultation':
-        return 'En consultation';
-      case 'completed':
-        return 'Terminé';
-      case 'cancelled':
-        return 'Annulé';
-      default:
-        return status;
-    }
+  case 'confirmed':
+    return 'Confirmed';
+  case 'in_consultation':
+    return 'In Consultation';
+  case 'completed':
+    return 'Completed';
+  case 'cancelled':
+    return 'Cancelled';
+  default:
+    return status;
+}
   }
 
   // ✅ STATS CARD
@@ -231,7 +231,7 @@ class DoctorDashboardScreen extends StatelessWidget {
                           });
                         },
                         child:
-                            const Text('Annuler'),
+                            const Text('Cancel'), 
                       ),
                   ],
                 ),
@@ -258,8 +258,8 @@ class DoctorDashboardScreen extends StatelessWidget {
 
           bottom: const TabBar(
             tabs: [
-              Tab(text: "Confirmés"),
-              Tab(text: "Terminés"),
+              Tab(text: "Confirmed"),
+              Tab(text: "Completed"),
             ],
           ),
 

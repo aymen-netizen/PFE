@@ -16,25 +16,15 @@ class DoctorConsultationScreen extends StatefulWidget {
 
 class _DoctorConsultationScreenState
     extends State<DoctorConsultationScreen> {
+
   final TextEditingController _diagnosisController =
       TextEditingController();
 
   bool _loading = true;
   Map<String, dynamic>? appointmentData;
 
-  final List<String> medicationsList = [
-    'Paracetamol',
-    'Ibuprofen',
-    'Amoxicillin',
-    'Vitamin C',
-  ];
-
-  final List<String> analysesList = [
-    'Blood test',
-    'Urine test',
-    'X-Ray',
-    'MRI',
-  ];
+  late List<String> medicationsList; 
+  late List<String> analysesList; 
 
   final List<String> selectedMedications = [];
   final List<String> selectedAnalyses = [];
@@ -51,10 +41,99 @@ class _DoctorConsultationScreenState
         .doc(widget.appointmentId)
         .get();
 
+    final data = doc.data();
+
     setState(() {
-      appointmentData = doc.data();
+      appointmentData = data;
       _loading = false;
+
+      medicationsList = _getMedicationsBySpecialty(); 
+      analysesList = _getAnalysesBySpecialty(); 
     });
+  }
+
+  // ✅ MEDICATIONS BY SPECIALTY
+  List<String> _getMedicationsBySpecialty() {
+    final specialty =
+        appointmentData?['specialty']?.toLowerCase() ?? '';
+
+    switch (specialty) {
+      case 'cardiologue':
+      case 'cardio':
+        return [
+          'Aspirin',
+          'Beta blockers',
+          'Statins',
+          'ACE inhibitors',
+        ];
+
+      case 'dentiste':
+      case 'dentist':
+        return [
+          'Ibuprofen',
+          'Amoxicillin',
+          'Mouthwash',
+          'Pain killers',
+        ];
+
+      case 'dermatologie':
+        return [
+          'Cream',
+          'Antibiotic ointment',
+          'Antihistamines',
+          'Moisturizer',
+        ];
+
+      case 'medecine generale':
+      case 'general':
+        return [
+          'Paracetamol',
+          'Ibuprofen',
+          'Vitamin C',
+        ];
+
+      default:
+        return ['Paracetamol'];
+    }
+  }
+
+  // ✅ ANALYSES BY SPECIALTY
+  List<String> _getAnalysesBySpecialty() {
+    final specialty =
+        appointmentData?['specialty']?.toLowerCase() ?? '';
+
+    switch (specialty) {
+      case 'cardiologue':
+      case 'cardio':
+        return [
+          'ECG',
+          'Blood pressure test',
+          'Cholesterol test',
+        ];
+
+      case 'dentiste':
+      case 'dentist':
+        return [
+          'Dental X-Ray',
+          'Oral examination',
+        ];
+
+      case 'dermatologie':
+        return [
+          'Skin test',
+          'Allergy test',
+        ];
+
+      case 'medecine generale':
+      case 'general':
+        return [
+          'Blood test',
+          'Urine test',
+        ];
+
+      default:
+        return ['Basic test'];
+    }
   }
 
   void _toggle(List<String> list, String value) {
@@ -66,58 +145,53 @@ class _DoctorConsultationScreenState
   }
 
   Future<void> _save() async {
-  final db = FirebaseFirestore.instance;
+    final db = FirebaseFirestore.instance;
 
-  // ✅ Update appointment
-  await db
-      .collection('appointments')
-      .doc(widget.appointmentId)
-      .update({
-    'diagnosis': _diagnosisController.text,
-    'medications': selectedMedications,
-    'analyses': selectedAnalyses,
-    'status': 'completed',
-  });
-
-  // ✅ GET appointment to retrieve patientId
-  final appointmentDoc = await db
-      .collection('appointments')
-      .doc(widget.appointmentId)
-      .get();
-
-  final data = appointmentDoc.data();
-
-  final patientId = data?['patientId'];
-
-  if (patientId != null) {
-    // ✅ SAVE TO DOSSIER (history)
     await db
-        .collection('patients')
-        .doc(patientId)
-        .collection('dossier')
-        .add({
+        .collection('appointments')
+        .doc(widget.appointmentId)
+        .update({
       'diagnosis': _diagnosisController.text,
       'medications': selectedMedications,
       'analyses': selectedAnalyses,
-      'date': FieldValue.serverTimestamp(),
+      'status': 'completed',
     });
 
-    // ✅ SAVE ANALYSES separately
-    for (var analysis in selectedAnalyses) {
+    final appointmentDoc = await db
+        .collection('appointments')
+        .doc(widget.appointmentId)
+        .get();
+
+    final data = appointmentDoc.data();
+    final patientId = data?['patientId'];
+
+    if (patientId != null) {
       await db
           .collection('patients')
           .doc(patientId)
-          .collection('analyses')
+          .collection('dossier')
           .add({
-        'name': analysis,
-        'status': 'pending',
+        'diagnosis': _diagnosisController.text,
+        'medications': selectedMedications,
+        'analyses': selectedAnalyses,
         'date': FieldValue.serverTimestamp(),
       });
-    }
-  }
 
-  Navigator.pop(context);
-}
+      for (var analysis in selectedAnalyses) {
+        await db
+            .collection('patients')
+            .doc(patientId)
+            .collection('analyses')
+            .add({
+          'name': analysis,
+          'status': 'pending',
+          'date': FieldValue.serverTimestamp(),
+        });
+      }
+    }
+
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,27 +209,22 @@ class _DoctorConsultationScreenState
       appBar: AppBar(title: const Text('Consultation')),
       body: Padding(
         padding: const EdgeInsets.all(16),
+
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ PATIENT INFO
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Reason: $reason',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+
+            Text(
+              'Reason: $reason',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 10),
 
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Symptoms: ${symptoms.join(', ')}'),
-            ),
+            Text('Symptoms: ${symptoms.join(', ')}'),
 
             const SizedBox(height: 20),
 
-            // ✅ DIAGNOSIS
             TextField(
               controller: _diagnosisController,
               decoration: const InputDecoration(
@@ -166,30 +235,24 @@ class _DoctorConsultationScreenState
 
             const SizedBox(height: 20),
 
-            // ✅ MEDICATIONS
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Medications'),
-            ),
+            const Text('Medications'),
 
             ...medicationsList.map((med) => CheckboxListTile(
                   value: selectedMedications.contains(med),
                   title: Text(med),
-                  onChanged: (_) => _toggle(selectedMedications, med),
+                  onChanged: (_) =>
+                      _toggle(selectedMedications, med),
                 )),
 
             const SizedBox(height: 10),
 
-            // ✅ ANALYSES
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Analyses'),
-            ),
+            const Text('Tests'), 
 
             ...analysesList.map((a) => CheckboxListTile(
                   value: selectedAnalyses.contains(a),
                   title: Text(a),
-                  onChanged: (_) => _toggle(selectedAnalyses, a),
+                  onChanged: (_) =>
+                      _toggle(selectedAnalyses, a),
                 )),
 
             const Spacer(),

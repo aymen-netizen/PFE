@@ -20,7 +20,7 @@ class DoctorAppointmentsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mes Patients'),
+        title: const Text('My Patients'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: firestore
@@ -35,7 +35,7 @@ class DoctorAppointmentsScreen extends StatelessWidget {
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
-            return const Center(child: Text('Aucun rendez-vous'));
+            return const Center(child: Text('No appointments'));
           }
 
           return ListView.builder(
