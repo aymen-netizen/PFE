@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../services/firebase_doctor_service.dart';
+import '../../services/firebase_specialty_service.dart';
 import '../booking/firebase_booking_screen.dart';
 
 class DoctorListScreen extends StatefulWidget {
@@ -15,13 +16,10 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
   String selectedSpecialty = 'all';
   String searchQuery = '';
 
-  final specialties = [
-    'all',
-    'dentiste',
-    'cardiologue',
-    'dermatologue',
-    'generaliste',
-  ];
+  final Stream<List<Map<String, dynamic>>> _specialtyStream =
+      FirebaseSpecialtyService().streamSpecialties();
+  final Stream<List<Map<String, dynamic>>> _doctorStream =
+      FirebaseDoctorService().doctorsStream();
 
   @override
   Widget build(BuildContext context) {
@@ -54,84 +52,66 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             ),
           ),
 
-          /// ✅ FILTER
-          SizedBox(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-
-              children: specialties.map((spec) {
-
-                final selected = selectedSpecialty == spec;
-
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedSpecialty = spec;
-                    });
-                  },
-
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
-
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFF0F7B8E)
-                          : Colors.white,
-
-                      borderRadius: BorderRadius.circular(25),
-
-                      border: Border.all(
-                        color: selected
-                            ? Colors.transparent
-                            : Colors.grey.shade300,
-                      ),
-
-                      boxShadow: selected
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF0F7B8E)
-                                    .withOpacity(0.3),
-                                blurRadius: 8,
-                              )
-                            ]
-                          : [],
-                    ),
-
-                    child: Row(
-                      children: [
-
-                        if (selected) ...[
-                          const Icon(
-                            Icons.check,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-
-                        Text(
-                          spec.capitalize(),
-                          style: TextStyle(
-                            color: selected
-                                ? Colors.white
-                                : Colors.black87,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          /// ✅ FILTER (DYNAMIC FROM FIREBASE)
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _specialtyStream,
+            builder: (context, specialtySnapshot) {
+              if (!specialtySnapshot.hasData) {
+                return const SizedBox(
+                  height: 56,
+                  child: Center(child: CircularProgressIndicator()),
                 );
+              }
 
-              }).toList(),
-            ),
+              final specialties = [
+                {'label': 'All', 'value': 'all'},
+                ...specialtySnapshot.data!.map((s) {
+                  final name = (s['name'] as String).trim();
+                  return {
+                    'label': name.toTitleCase(),
+                    'value': name.toLowerCase(),
+                  };
+                }),
+              ];
+
+              return SizedBox(
+                height: 56,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  scrollDirection: Axis.horizontal,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemCount: specialties.length,
+                  itemBuilder: (context, index) {
+                    final specialty = specialties[index];
+                    final specValue = specialty['value'] as String;
+                    final specLabel = specialty['label'] as String;
+                    final selected = selectedSpecialty == specValue;
+
+                    return ChoiceChip(
+                      label: Text(specLabel),
+                      selected: selected,
+                      onSelected: (_) {
+                        setState(() {
+                          selectedSpecialty = specValue;
+                        });
+                      },
+                      selectedColor: const Color(0xFF0F7B8E),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        side: BorderSide(
+                          color: selected ? Colors.transparent : Colors.grey.shade300,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 10),
@@ -139,8 +119,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
           /// ✅ LIST
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream:
-                  FirebaseDoctorService().doctorsStream(),
+              stream: _doctorStream,
               builder: (context, snapshot) {
 
                 if (!snapshot.hasData) {
@@ -175,23 +154,43 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
 
                 }).toList();
 
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        selectedSpecialty == 'all'
+                            ? 'No doctors found. Try another search.'
+                            : 'No doctors found for ${selectedSpecialty.toTitleCase()}.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ),
+                  );
+                }
+
                 return ListView.builder(
                   itemCount: filtered.length,
                   itemBuilder: (context, i) {
 
                     final doc = filtered[i];
 
-                    /// ✅ ✅ CLEAN IMAGE PATH (FINAL FIX)
-                    final raw = doc['image'] ?? "";
-
-                    final cleaned = raw
+                    /// ✅ ✅ CLEAN IMAGE PATH
+                    final rawImage = (doc['image'] ?? '').toString();
+                    final cleanedImage = rawImage
+                        .trim()
+                        .replaceAll(RegExp(r'\s+'), '')
+                        .replaceAll('assets/', '');
+                    final hasImage = cleanedImage.isNotEmpty;
+                    final imageProvider = hasImage
+                        ? AssetImage('assets/$cleanedImage')
+                        : null;
+                    final initials = (doc['name'] ?? '')
                         .toString()
                         .trim()
-                        .replaceAll(RegExp(r'\s+'), '') // remove ALL spaces + newlines
-                        .replaceAll('assets/', '');     // remove duplicate prefix
-
-
-final imagePath = 'assets/${(doc['image'] ?? '').trim()}';
+                        .isNotEmpty
+                        ? doc['name'].toString().trim()[0].toUpperCase()
+                        : 'D';
 
                     return Container(
                       margin: const EdgeInsets.symmetric(
@@ -215,12 +214,20 @@ final imagePath = 'assets/${(doc['image'] ?? '').trim()}';
                         children: [
 
                           /// ✅ AVATAR
-                         
-CircleAvatar(
-  radius: 28,
-  backgroundImage: AssetImage(imagePath),
-),
-
+                          CircleAvatar(
+                            radius: 28,
+                            backgroundColor: const Color(0xFFEAF3F5),
+                            backgroundImage: imageProvider,
+                            child: imageProvider == null
+                                ? Text(
+                                    initials,
+                                    style: const TextStyle(
+                                      color: Color(0xFF0F7B8E),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
+                          ),
 
                           const SizedBox(width: 12),
 
@@ -331,5 +338,9 @@ extension StringExtension on String {
   String capitalize() {
     if (isEmpty) return "";
     return "${this[0].toUpperCase()}${substring(1)}";
+  }
+
+  String toTitleCase() {
+    return split(' ').map((word) => word.capitalize()).join(' ');
   }
 }

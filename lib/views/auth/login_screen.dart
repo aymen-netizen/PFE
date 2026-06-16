@@ -47,7 +47,17 @@ class _LoginState extends State<LoginScreen> {
           .doc(user.uid)
           .get();
 
-      final role = doc.data()?['role'] ?? 'patient';
+      final data = doc.data() ?? {};
+      final role = data['role'] ?? 'patient';
+      final status = data['status'] ?? 'active';
+
+      if (status == 'deleted' || status == 'inactive') {
+        await FirebaseAuth.instance.signOut();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account is inactive or deleted')),
+        );
+        return;
+      }
 
       Widget next;
 
