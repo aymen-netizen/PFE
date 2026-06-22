@@ -39,12 +39,17 @@ class DossierScreen extends StatelessWidget {
                   .orderBy('createdAt', descending: true) // ✅ latest first
                   .snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  print("DEBUG: Dossier Screen error: ${snapshot.error}");
+                  return Center(child: Text("Error: ${snapshot.error}"));
+                }
 
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 final docs = snapshot.data!.docs;
+                print("DEBUG: Dossier Screen user.uid: ${user.uid}, docs count: ${docs.length}");
 
                 if (docs.isEmpty) {
                   return const Center(child: Text("No records available"));

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/firebase_specialty_service.dart';
+import '../../core/constants/app_Color.dart';
 
 class AdminSpecialtyScreen extends StatefulWidget {
   const AdminSpecialtyScreen({super.key});
@@ -19,13 +20,17 @@ class _AdminSpecialtyScreenState extends State<AdminSpecialtyScreen> {
     try {
       await _specialtyService.createSpecialty(_nameController.text);
       _nameController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Specialty added successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Spécialité ajoutée avec succès')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -33,16 +38,22 @@ class _AdminSpecialtyScreenState extends State<AdminSpecialtyScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete specialty'),
-        content: Text('Delete "$name" from specialties?'),
+        title: const Text('Supprimer la spécialité'),
+        content: Text('Voulez-vous vraiment supprimer la spécialité "$name" ?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text('Annuler', style: TextStyle(color: Colors.grey.shade600)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              elevation: 0,
+            ),
+            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -56,77 +67,150 @@ class _AdminSpecialtyScreenState extends State<AdminSpecialtyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Specialties'),
+        title: const Text('Spécialités Médicales'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.grey.shade800,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Form(
-              key: _formKey,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'New specialty',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Name required';
-                        }
-                        return null;
-                      },
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Add Specialty Section Card
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200, width: 1.2),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: 'Nouvelle spécialité',
+                              prefixIcon: const Icon(Icons.add_circle_outline, size: 20),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Nom obligatoire';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _createSpecialty,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _createSpecialty,
-                    child: const Text('Add'),
-                  ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: StreamBuilder<List<Map<String, dynamic>>>(
-                stream: _specialtyService.streamSpecialtyCollection(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(child: Text('No specialties added yet'));
-                  }
-                  final specialties = snapshot.data!;
-                  return ListView.builder(
-                    itemCount: specialties.length,
-                    itemBuilder: (context, index) {
-                      final specialty = specialties[index];
-                      final name = specialty['name'] ?? '';
-                      final docId = specialty['docId'] as String?;
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        child: ListTile(
-                          title: Text(name),
-                          trailing: docId != null
-                              ? IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteSpecialty(docId, name),
-                                  tooltip: 'Delete specialty',
-                                )
-                              : null,
+              const SizedBox(height: 24),
+
+              const Text(
+                'Liste des Spécialités',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Specialties Stream
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _specialtyService.streamSpecialtyCollection(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: AppColors.primaryColor));
+                    }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.category_outlined, size: 48, color: Colors.grey.shade300),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Aucune spécialité ajoutée pour le moment.',
+                              style: TextStyle(color: Colors.grey, fontSize: 13),
+                            ),
+                          ],
                         ),
                       );
-                    },
-                  );
-                },
+                    }
+                    final specialties = snapshot.data!;
+                    return ListView.builder(
+                      itemCount: specialties.length,
+                      itemBuilder: (context, index) {
+                        final specialty = specialties[index];
+                        final name = specialty['name'] ?? '';
+                        final docId = specialty['docId'] as String?;
+                        return Card(
+                          elevation: 0,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade200, width: 1.2),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppColors.primaryColor.withOpacity(0.1),
+                              child: const Icon(Icons.category, size: 16, color: AppColors.primaryColor),
+                            ),
+                            title: Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            trailing: docId != null
+                                ? IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                    onPressed: () => _deleteSpecialty(docId, name),
+                                    tooltip: 'Supprimer',
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -67,7 +67,9 @@ class _FirebaseDoctorConsultationScreenState
   
 
   final appointmentId = widget.appointment['id'];
-  final patientId = widget.appointment['userId'];
+  final patientId = widget.appointment['userId'] ?? widget.appointment['patientId'];
+
+  print("DEBUG: _confirmConsultation - appointmentId: $appointmentId, patientId: $patientId");
 
   if (appointmentId == null || patientId == null) {
     ScaffoldMessenger.of(context).showSnackBar(

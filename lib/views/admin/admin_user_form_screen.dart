@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../services/firebase_admin_service.dart';
 import '../../services/firebase_specialty_service.dart';
+import '../../core/constants/app_Color.dart';
 import 'admin_specialty_screen.dart';
 
 class AdminUserFormScreen extends StatefulWidget {
@@ -98,7 +99,10 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red.shade600,
+          ),
         );
         setState(() => _isLoading = false);
       }
@@ -110,118 +114,232 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.uid != null;
-    final roleLabel = '${widget.role[0].toUpperCase()}${widget.role.substring(1)}';
+    final String roleLabel = widget.role == 'doctor'
+        ? 'Médecin'
+        : widget.role == 'assistant'
+            ? 'Assistant'
+            : 'Patient';
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit $roleLabel' : 'Add $roleLabel'),
+        title: Text(isEdit ? 'Modifier le $roleLabel' : 'Ajouter un $roleLabel'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.grey.shade800,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              Text(
-                'Role: $roleLabel',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Full name'),
-                validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Email is required';
-                  if (!value.contains('@')) return 'Invalid email';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone'),
-                validator: (value) => value == null || value.isEmpty ? 'Phone is required' : null,
-              ),
-              if (!isEdit) ...[
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Password is required';
-                    if (value.length < 6) return 'Password must be at least 6 characters';
-                    return null;
-                  },
-                ),
-              ],
-              if (_requiresSpecialty) ...[
-                const SizedBox(height: 16),
-                _isLoadingSpecialties
-                    ? const Center(child: CircularProgressIndicator())
-                    : Builder(
-                        builder: (context) {
-                          final specialtyNames = _specialties
-                              .where((s) => s['name'] != null)
-                              .map((s) => s['name'] as String)
-                              .toList();
-
-                          final validValue = specialtyNames.contains(_selectedSpecialty) ? _selectedSpecialty : null;
-
-                          return DropdownButtonFormField<String>(
-                            value: validValue,
-                            decoration: const InputDecoration(labelText: 'Specialty'),
-                            items: specialtyNames
-                                .map((name) => DropdownMenuItem(
-                                  value: name,
-                                  child: Text(name),
-                                ))
-                                .toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() => _selectedSpecialty = value);
-                              }
-                            },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return specialtyNames.isEmpty ? 'No specialties available' : 'Select a specialty';
-                              }
-                              return null;
-                            },
-                          );
-                        },
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Info Header Badge
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Rôle: $roleLabel',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryColor,
                       ),
-                if (!_isLoadingSpecialties) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AdminSpecialtyScreen(),
-                          ),
-                        );
-                        await _loadSpecialties();
-                      },
-                      child: const Text('Manage specialties'),
                     ),
                   ),
-                ],
+                ),
+                const SizedBox(height: 24),
+
+                // Form Fields Card
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: Colors.grey.shade200, width: 1.2),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Coordonnées',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const Divider(height: 24),
+
+                        // Full Name Input
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: 'Nom complet',
+                            prefixIcon: const Icon(Icons.person_outline, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Nom obligatoire' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Email Input (disabled in edit mode)
+                        TextFormField(
+                          controller: _emailController,
+                          enabled: !isEdit,
+                          decoration: InputDecoration(
+                            labelText: 'Adresse e-mail',
+                            prefixIcon: const Icon(Icons.mail_outline, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            filled: isEdit,
+                            fillColor: isEdit ? Colors.grey.shade50 : null,
+                            helperText: isEdit ? 'L\'email ne peut pas être modifié' : null,
+                            helperStyle: TextStyle(color: Colors.grey.shade500),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) return 'Email obligatoire';
+                            if (!value.contains('@')) return 'Email invalide';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Phone Input
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Téléphone',
+                            prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Téléphone obligatoire' : null,
+                        ),
+
+                        // Password Input (Only when creating)
+                        if (!isEdit) ...[
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            decoration: InputDecoration(
+                              labelText: 'Mot de passe',
+                              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return 'Mot de passe obligatoire';
+                              if (value.length < 6) return 'Le mot de passe doit contenir au moins 6 caractères';
+                              return null;
+                            },
+                          ),
+                        ],
+
+                        // Specialty Dropdown section (if doctor or assistant)
+                        if (_requiresSpecialty) ...[
+                          const SizedBox(height: 16),
+                          _isLoadingSpecialties
+                              ? const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: CircularProgressIndicator(color: AppColors.primaryColor),
+                                  ),
+                                )
+                              : Builder(
+                                  builder: (context) {
+                                    final specialtyNames = _specialties
+                                        .where((s) => s['name'] != null)
+                                        .map((s) => s['name'] as String)
+                                        .toList();
+
+                                    final validValue = specialtyNames.contains(_selectedSpecialty) ? _selectedSpecialty : null;
+
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        DropdownButtonFormField<String>(
+                                          value: validValue,
+                                          decoration: InputDecoration(
+                                            labelText: 'Spécialité médicale',
+                                            prefixIcon: const Icon(Icons.category_outlined, size: 20),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          items: specialtyNames
+                                              .map((name) => DropdownMenuItem(
+                                                    value: name,
+                                                    child: Text(name),
+                                                  ))
+                                              .toList(),
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              setState(() => _selectedSpecialty = value);
+                                            }
+                                          },
+                                          validator: (value) {
+                                            if (value == null || value.isEmpty) {
+                                              return specialtyNames.isEmpty ? 'Aucune spécialité disponible' : 'Veuillez sélectionner une spécialité';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: TextButton.icon(
+                                            onPressed: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => const AdminSpecialtyScreen(),
+                                                ),
+                                              );
+                                              await _loadSpecialties();
+                                            },
+                                            icon: const Icon(Icons.settings_outlined, size: 14, color: AppColors.primaryColor),
+                                            label: const Text('Gérer les spécialités', style: TextStyle(fontSize: 12, color: AppColors.primaryColor)),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Save/Create Button
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    _isLoading
+                        ? 'Enregistrement...'
+                        : isEdit
+                            ? 'Enregistrer les Modifications'
+                            : 'Créer le Compte',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
               ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _save,
-                child: Text(_isLoading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create $roleLabel'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

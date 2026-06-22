@@ -44,9 +44,7 @@ class RootScreen extends StatelessWidget {
 
         // ✅ DOCTOR
         if (role == "doctor") {
-          return DoctorAppointmentsScreen(
-            doctorUid: user.uid,
-          );
+          return const DoctorAppointmentsScreen();
         }
 
         // fallback

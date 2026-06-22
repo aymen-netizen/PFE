@@ -39,58 +39,77 @@ class _PatientRequestFormState extends State<PatientRequestForm> {
   }
 
   List<String> _getSymptomsBySpecialty(String specialty) {
-    switch (specialty.toLowerCase()) {
+    final spec = specialty.toLowerCase().trim();
 
-      case 'cardiologue':
-      case 'cardio':
-        return [
-          'Chest pain',
-          'Shortness of breath',
-          'Heart palpitations',
-          'Fatigue',
-          'High blood pressure',
-          'Dizziness',
-        ];
-
-      case 'dentiste':
-      case 'dentist':
-        return [
-          'Tooth pain',
-          'Gum bleeding',
-          'Bad breath',
-          'Tooth sensitivity',
-          'Swollen gums',
-          'Jaw pain',
-        ];
-
-      case 'dermatologie':
-      case 'dermatologist':
-        return [
-          'Skin rash',
-          'Acne',
-          'Itching',
-          'Red spots',
-          'Dry skin',
-          'Skin infection',
-        ];
-
-      case 'medecine generale':
-      case 'general':
-        return [
-          'Fever',
-          'Headache',
-          'Cough',
-          'Fatigue',
-          'Body pain',
-          'Dizziness',
-        ];
-
-      default:
-        return [
-          'Fever',
-          'Headache',
-          'Fatigue',
-        ];
+    if (spec.contains('dentist') || spec.contains('dentiste')) {
+      return [
+        'Tooth pain',
+        'Gum bleeding',
+        'Bad breath',
+        'Tooth sensitivity',
+        'Swollen gums',
+        'Jaw pain',
+      ];
+    } else if (spec.contains('cardio')) {
+      return [
+        'Chest pain',
+        'Shortness of breath',
+        'Heart palpitations',
+        'Fatigue',
+        'High blood pressure',
+        'Dizziness',
+      ];
+    } else if (spec.contains('dermato')) {
+      return [
+        'Skin rash',
+        'Acne',
+        'Itching',
+        'Red spots',
+        'Dry skin',
+        'Skin infection',
+      ];
+    } else if (spec.contains('generale') || spec.contains('générale') || spec.contains('generaliste') || spec.contains('généraliste') || spec.contains('general')) {
+      return [
+        'Fever',
+        'Headache',
+        'Cough',
+        'Fatigue',
+        'Body pain',
+        'Dizziness',
+      ];
+    } else if (spec.contains('pediatre') || spec.contains('pédiatre') || spec.contains('pediatrician') || spec.contains('pediatrie')) {
+      return [
+        'Fever (Child)',
+        'Cough (Child)',
+        'Growth concerns',
+        'Rash (Child)',
+        'Vomiting (Child)',
+        'Sleep issues',
+      ];
+    } else if (spec.contains('ophtalmo') || spec.contains('ophthalmo') || spec.contains('eye') || spec.contains('yeux')) {
+      return [
+        'Blurry vision',
+        'Eye pain',
+        'Dry eyes',
+        'Redness',
+        'Itchy eyes',
+        'Double vision',
+      ];
+    } else if (spec.contains('ortho') || spec.contains('bone') || spec.contains('joint')) {
+      return [
+        'Joint pain',
+        'Bone pain',
+        'Muscle stiffness',
+        'Swelling',
+        'Difficulty walking',
+        'Back pain',
+      ];
+    } else {
+      return [
+        'Fever',
+        'Headache',
+        'Fatigue',
+      ];
     }
   }
 

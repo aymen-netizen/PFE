@@ -163,7 +163,7 @@ class _DoctorConsultationScreenState
         .get();
 
     final data = appointmentDoc.data();
-    final patientId = data?['patientId'];
+    final patientId = data?['userId'] ?? data?['patientId'];
 
     if (patientId != null) {
       await db

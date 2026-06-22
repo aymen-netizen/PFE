@@ -70,6 +70,10 @@ class _AnalysesScreenState extends State<AnalysesScreen> {
             .snapshots(),
 
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            print("DEBUG: Analyses Screen error: ${snapshot.error}");
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
 
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());

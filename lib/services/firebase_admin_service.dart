@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class FirebaseAdminService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -49,26 +50,37 @@ class FirebaseAdminService {
     required String password,
     String specialty = '',
   }) async {
-    // Create Firebase Auth account
-    final authResult = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
+    // Create Firebase Auth account using a temporary secondary app name
+    // to prevent logging out the active admin.
+    FirebaseApp tempApp = await Firebase.initializeApp(
+      name: 'TempRegisterApp',
+      options: Firebase.app().options,
     );
 
-    final uid = authResult.user!.uid;
+    try {
+      final authResult = await FirebaseAuth.instanceFor(app: tempApp)
+          .createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-    // Create Firestore user document with the Auth uid
-    await _usersCollection.doc(uid).set({
-      'uid': uid,
-      'name': name.trim(),
-      'email': email.trim(),
-      'phone': phone.trim(),
-      'role': role,
-      'specialty': specialty.trim(),
-      'status': 'active',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+      final uid = authResult.user!.uid;
+
+      // Create Firestore user document with the Auth uid
+      await _usersCollection.doc(uid).set({
+        'uid': uid,
+        'name': name.trim(),
+        'email': email.trim(),
+        'phone': phone.trim(),
+        'role': role,
+        'specialty': specialty.trim(),
+        'status': 'active',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } finally {
+      await tempApp.delete();
+    }
   }
 
   Future<void> updateUser({

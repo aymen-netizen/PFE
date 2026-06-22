@@ -127,7 +127,7 @@
                   final data =
                       docSnap.data() as Map<String, dynamic>;
 
-                  final patientId = data['patientId'];
+                  final patientId = data['userId'] ?? data['patientId'];
                   final doctorId = data['doctorId'];
                   final status = data['status'] ?? 'pending';
 
